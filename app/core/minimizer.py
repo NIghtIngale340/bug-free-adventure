@@ -15,12 +15,11 @@ the full algorithm so the minimization step of the pipeline is
 demonstrated in code and can be pointed to during the defense.
 """
 
-from typing import Dict, List, Set, Tuple
 
 from app.core.dfa import DFA
 
 
-def _reachable_states(dfa: DFA) -> Set[str]:
+def _reachable_states(dfa: DFA) -> set[str]:
     """Return the set of states reachable from the start state.
 
     Note: q_trap is reachable *implicitly* from any state that is missing
@@ -28,8 +27,8 @@ def _reachable_states(dfa: DFA) -> Set[str]:
     DFA has empty rows for q13 and q_trap, we always include the trap
     state in the reachable set if it exists in the state list.
     """
-    seen: Set[str] = set()
-    stack: List[str] = [dfa.start_state]
+    seen: set[str] = set()
+    stack: list[str] = [dfa.start_state]
     while stack:
         s = stack.pop()
         if s in seen:
@@ -43,7 +42,7 @@ def _reachable_states(dfa: DFA) -> Set[str]:
     return seen
 
 
-def _prune_unreachable(dfa: DFA) -> Tuple[DFA, List[str]]:
+def _prune_unreachable(dfa: DFA) -> tuple[DFA, list[str]]:
     """Return a new DFA with only reachable states, plus the removed list."""
     reachable = _reachable_states(dfa)
     removed = [s for s in dfa.states if s not in reachable]
@@ -57,7 +56,7 @@ def _prune_unreachable(dfa: DFA) -> Tuple[DFA, List[str]]:
     return pruned, removed
 
 
-def _partition_refinement(dfa: DFA) -> List[Set[str]]:
+def _partition_refinement(dfa: DFA) -> list[set[str]]:
     """
     Refine partitions until stable.
 
@@ -66,22 +65,22 @@ def _partition_refinement(dfa: DFA) -> List[Set[str]]:
     # Step 1: initial partition -> {accepting} vs {non-accepting}
     accepting = {s for s in dfa.states if s in dfa.accepting_states}
     non_accepting = {s for s in dfa.states if s not in dfa.accepting_states}
-    partitions: List[Set[str]] = [p for p in (accepting, non_accepting) if p]
+    partitions: list[set[str]] = [p for p in (accepting, non_accepting) if p]
 
     # Collect every symbol that appears anywhere in the transition table.
-    symbols: Set[str] = set()
+    symbols: set[str] = set()
     for row in dfa.transitions.values():
         symbols |= set(row.keys())
 
     changed = True
     while changed:
         changed = False
-        new_partitions: List[Set[str]] = []
+        new_partitions: list[set[str]] = []
         for block in partitions:
             # Group states inside this block by their signature.
-            signature_map: Dict[Tuple[str, ...], Set[str]] = {}
+            signature_map: dict[tuple[str, ...], set[str]] = {}
             for state in block:
-                sig: List[str] = []
+                sig: list[str] = []
                 for sym in sorted(symbols):
                     nxt = dfa.transitions.get(state, {}).get(sym, dfa.trap_state)
                     # Which partition index does `nxt` currently live in?
@@ -102,7 +101,7 @@ def _partition_refinement(dfa: DFA) -> List[Set[str]]:
     return partitions
 
 
-def minimize(dfa: DFA) -> Tuple[DFA, Dict[str, object]]:
+def minimize(dfa: DFA) -> tuple[DFA, dict[str, object]]:
     """
     Minimize `dfa`.
 
@@ -122,9 +121,9 @@ def minimize(dfa: DFA) -> Tuple[DFA, Dict[str, object]]:
     # Name each partition block by a canonical state name.
     # If a block contains exactly one original state, keep that name.
     # Otherwise, generate a new name like "M0", "M1", ...
-    block_names: Dict[int, str] = {}
+    block_names: dict[int, str] = {}
     counter = 0
-    merged_groups: List[Set[str]] = []
+    merged_groups: list[set[str]] = []
     for i, block in enumerate(partitions):
         if len(block) == 1:
             block_names[i] = next(iter(block))
@@ -140,10 +139,10 @@ def minimize(dfa: DFA) -> Tuple[DFA, Dict[str, object]]:
         return -1
 
     # Build the minimized transition table.
-    min_transitions: Dict[str, Dict[str, str]] = {}
+    min_transitions: dict[str, dict[str, str]] = {}
     for block in partitions:
         new_name = block_names[block_index(next(iter(block)))]
-        row: Dict[str, str] = {}
+        row: dict[str, str] = {}
         sample = next(iter(block))
         for sym, nxt in pruned.transitions.get(sample, {}).items():
             row[sym] = block_names[block_index(nxt)]
@@ -165,7 +164,7 @@ def minimize(dfa: DFA) -> Tuple[DFA, Dict[str, object]]:
         trap_state=min_trap,
     )
 
-    metadata: Dict[str, object] = {
+    metadata: dict[str, object] = {
         "removed_unreachable": removed,
         "partitions": [set(p) for p in partitions],
         "state_count_before": len(dfa.states),

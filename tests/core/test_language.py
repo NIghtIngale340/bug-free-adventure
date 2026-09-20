@@ -9,7 +9,6 @@ from app.core.language import (
 )
 from app.data.id_rules import ALPHABET
 
-
 # --- is_symbol_in_alphabet --------------------------------------------------
 
 @pytest.mark.parametrize("ch", ["E", "M", "P", "-", "0", "5", "9"])

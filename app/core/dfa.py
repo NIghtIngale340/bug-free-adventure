@@ -17,7 +17,6 @@ Where:
 Layer 2 of the validation pipeline (deterministic simulation).
 """
 
-from typing import Dict, List, Optional
 
 from app.data.id_rules import (
     ACCEPTING_STATES,
@@ -39,14 +38,14 @@ class DFA:
 
     def __init__(
         self,
-        states: Optional[List[str]] = None,
-        transitions: Optional[Dict[str, Dict[str, str]]] = None,
+        states: list[str] | None = None,
+        transitions: dict[str, dict[str, str]] | None = None,
         start_state: str = START_STATE,
-        accepting_states: Optional[set] = None,
+        accepting_states: set | None = None,
         trap_state: str = TRAP_STATE,
     ) -> None:
-        self.states: List[str] = states if states is not None else list(CANONICAL_STATES)
-        self.transitions: Dict[str, Dict[str, str]] = (
+        self.states: list[str] = states if states is not None else list(CANONICAL_STATES)
+        self.transitions: dict[str, dict[str, str]] = (
             transitions if transitions is not None else CANONICAL_TRANSITIONS
         )
         self.start_state: str = start_state
@@ -84,6 +83,6 @@ class DFA:
 
     # --- Inspection ---------------------------------------------------------
 
-    def transition_table(self) -> Dict[str, Dict[str, str]]:
+    def transition_table(self) -> dict[str, dict[str, str]]:
         """Return the full delta as a nested dict for display."""
         return {state: dict(self.transitions.get(state, {})) for state in self.states}

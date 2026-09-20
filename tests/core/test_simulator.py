@@ -5,7 +5,6 @@ import pytest
 from app.core.models import SimulationStatus
 from app.core.simulator import simulate
 
-
 # --- Accepted cases ---------------------------------------------------------
 
 @pytest.mark.parametrize(

@@ -36,7 +36,7 @@ def test_canonical_dfa_is_already_minimal() -> None:
     State count should not shrink.
     """
     dfa = DFA()
-    minimized, meta = minimize(dfa)
+    _minimized, meta = minimize(dfa)
     assert meta["state_count_before"] == meta["state_count_after"]
 
 

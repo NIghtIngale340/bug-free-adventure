@@ -11,7 +11,7 @@ Per team Rule 5, modifying any signature here requires unanimous
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class SimulationStatus(Enum):
@@ -39,10 +39,10 @@ class SimulationResult:
     input_string: str
     accepted: bool
     status: SimulationStatus
-    final_state: Optional[str]
-    trace: List[TransitionStep]
-    error_message: Optional[str]
-    error_position: Optional[int]
+    final_state: str | None
+    trace: list[TransitionStep]
+    error_message: str | None
+    error_position: int | None
     processed_symbols: int
     total_symbols: int
     explanation: str
@@ -51,10 +51,10 @@ class SimulationResult:
 @dataclass(frozen=True)
 class AutomataMetadata:
     """Formal description of the Minimized DFA for theory display."""
-    states: List[str]
-    alphabet: List[str]
+    states: list[str]
+    alphabet: list[str]
     start_state: str
-    accepting_states: List[str]
-    transition_table: Dict[str, Dict[str, str]]
+    accepting_states: list[str]
+    transition_table: dict[str, dict[str, str]]
     re_pattern: str
-    minimization_summary: Dict[str, Any]
+    minimization_summary: dict[str, Any]

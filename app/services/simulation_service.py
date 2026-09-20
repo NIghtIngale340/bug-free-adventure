@@ -15,7 +15,6 @@ Used by: Chester's Page 2 (Step-by-Step Simulator) and Page 3 (Automata Explorer
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 from app.core.dfa import DFA
 from app.core.language import is_symbol_in_alphabet
@@ -43,9 +42,9 @@ class _Session:
     input_string: str
     state: str = START_STATE
     cursor: int = 0
-    trace: List[TransitionStep] = field(default_factory=list)
+    trace: list[TransitionStep] = field(default_factory=list)
     finished: bool = False
-    rejected_reason: Optional[SimulationStatus] = None
+    rejected_reason: SimulationStatus | None = None
 
 
 class SimulationService:
@@ -53,7 +52,7 @@ class SimulationService:
 
     def __init__(self) -> None:
         self._dfa = DFA()
-        self._sessions: Dict[str, _Session] = {}
+        self._sessions: dict[str, _Session] = {}
 
     # --- Session lifecycle ------------------------------------------------
 
@@ -74,7 +73,7 @@ class SimulationService:
 
     # --- Stepping ---------------------------------------------------------
 
-    def step(self, session_id: str) -> Optional[TransitionStep]:
+    def step(self, session_id: str) -> TransitionStep | None:
         """
         Advance one symbol. Returns the TransitionStep, or None when the
         session has finished (accepted, rejected, or exhausted).

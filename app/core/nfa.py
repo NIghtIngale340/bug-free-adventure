@@ -15,7 +15,6 @@ still works.
 """
 
 from collections import deque
-from typing import Dict, List, Optional, Set, Tuple
 
 from app.core.dfa import DFA
 from app.data.id_rules import (
@@ -38,11 +37,11 @@ class NFA:
 
     def __init__(
         self,
-        states: List[str],
-        transitions: Dict[str, Dict[str, Set[str]]],
+        states: list[str],
+        transitions: dict[str, dict[str, set[str]]],
         start_state: str,
-        accepting_states: Set[str],
-        epsilon: Optional[Dict[str, Set[str]]] = None,
+        accepting_states: set[str],
+        epsilon: dict[str, set[str]] | None = None,
     ) -> None:
         self.states = states
         self.transitions = transitions
@@ -59,7 +58,7 @@ def canonical_nfa() -> NFA:
     one move per (state, symbol) pair, making subset construction a
     trivial 1-to-1 mapping. This is documented in docs/nfa.md.
     """
-    transitions: Dict[str, Dict[str, Set[str]]] = {s: {} for s in CANONICAL_STATES}
+    transitions: dict[str, dict[str, set[str]]] = {s: {} for s in CANONICAL_STATES}
     for state, row in CANONICAL_TRANSITIONS.items():
         for symbol, nxt in row.items():
             transitions.setdefault(state, {}).setdefault(symbol, set()).add(nxt)
@@ -71,7 +70,7 @@ def canonical_nfa() -> NFA:
     )
 
 
-def epsilon_closure(nfa: NFA, states: Set[str]) -> Set[str]:
+def epsilon_closure(nfa: NFA, states: set[str]) -> set[str]:
     """Return the epsilon closure of `states`."""
     stack = list(states)
     closure = set(states)
@@ -84,15 +83,15 @@ def epsilon_closure(nfa: NFA, states: Set[str]) -> Set[str]:
     return closure
 
 
-def move(nfa: NFA, states: Set[str], symbol: str) -> Set[str]:
+def move(nfa: NFA, states: set[str], symbol: str) -> set[str]:
     """Return the set of NFA states reachable from `states` on `symbol`."""
-    result: Set[str] = set()
+    result: set[str] = set()
     for s in states:
         result |= nfa.transitions.get(s, {}).get(symbol, set())
     return result
 
 
-def subset_construction(nfa: NFA) -> Tuple[DFA, List[Tuple[str, Set[str]]]]:
+def subset_construction(nfa: NFA) -> tuple[DFA, list[tuple[str, set[str]]]]:
     """
     Convert an NFA to a DFA via the subset construction algorithm.
 
@@ -102,9 +101,9 @@ def subset_construction(nfa: NFA) -> Tuple[DFA, List[Tuple[str, Set[str]]]]:
         it represents. This trace is used in docs/dfa.md for the defense.
     """
     start = frozenset(epsilon_closure(nfa, {nfa.start_state}))
-    dfa_states: Dict[frozenset, str] = {start: "D0"}
-    dfa_transitions: Dict[str, Dict[str, str]] = {"D0": {}}
-    trace: List[Tuple[str, Set[str]]] = [("D0", set(start))]
+    dfa_states: dict[frozenset, str] = {start: "D0"}
+    dfa_transitions: dict[str, dict[str, str]] = {"D0": {}}
+    trace: list[tuple[str, set[str]]] = [("D0", set(start))]
 
     queue = deque([start])
     counter = 1
@@ -114,7 +113,7 @@ def subset_construction(nfa: NFA) -> Tuple[DFA, List[Tuple[str, Set[str]]]]:
         current_name = dfa_states[current]
 
         # Gather every symbol that appears in any NFA state of `current`.
-        symbols: Set[str] = set()
+        symbols: set[str] = set()
         for s in current:
             symbols |= set(nfa.transitions.get(s, {}).keys())
 

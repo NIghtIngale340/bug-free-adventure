@@ -13,7 +13,6 @@ Layer 1 of the validation pipeline (alphabet check).
 Layer 2 (automata simulation) lives in app/core/simulator.py.
 """
 
-from typing import List, Tuple
 
 from app.data.id_rules import ALPHABET, RE_PATTERN, TOTAL_LENGTH
 
@@ -23,7 +22,7 @@ def is_symbol_in_alphabet(char: str) -> bool:
     return len(char) == 1 and char in ALPHABET
 
 
-def validate_symbols(input_str: str) -> Tuple[bool, List[Tuple[int, str]]]:
+def validate_symbols(input_str: str) -> tuple[bool, list[tuple[int, str]]]:
     """
     Check every character against Sigma.
 
@@ -31,7 +30,7 @@ def validate_symbols(input_str: str) -> Tuple[bool, List[Tuple[int, str]]]:
         (True,  [])                if all symbols belong to Sigma
         (False, [(idx, char), ...]) otherwise
     """
-    illegal: List[Tuple[int, str]] = []
+    illegal: list[tuple[int, str]] = []
     for idx, ch in enumerate(input_str):
         if not is_symbol_in_alphabet(ch):
             illegal.append((idx, ch))

@@ -16,13 +16,12 @@ Alphabet (|Sigma| = 14):
   Sigma = {'E', 'M', 'P', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
 """
 
-from typing import Dict, FrozenSet, List
 
 # --- Alphabet ---------------------------------------------------------------
 
-DIGITS: List[str] = [str(d) for d in range(10)]  # '0' .. '9'
+DIGITS: list[str] = [str(d) for d in range(10)]  # '0' .. '9'
 
-ALPHABET: FrozenSet[str] = frozenset({"E", "M", "P", "-", *DIGITS})
+ALPHABET: frozenset[str] = frozenset({"E", "M", "P", "-", *DIGITS})
 
 # --- Language structure -----------------------------------------------------
 
@@ -37,14 +36,14 @@ RE_PATTERN: str = r"^EMP-[0-9]{4}-[0-9]{4}$"
 
 START_STATE: str = "q0"
 TRAP_STATE: str = "q_trap"
-ACCEPTING_STATES: FrozenSet[str] = frozenset({"q13"})
+ACCEPTING_STATES: frozenset[str] = frozenset({"q13"})
 
-CANONICAL_STATES: List[str] = [
+CANONICAL_STATES: list[str] = [
     "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7",
     "q8", "q9", "q10", "q11", "q12", "q13", TRAP_STATE,
 ]
 
-CANONICAL_TRANSITIONS: Dict[str, Dict[str, str]] = {
+CANONICAL_TRANSITIONS: dict[str, dict[str, str]] = {
     "q0":  {"E": "q1"},
     "q1":  {"M": "q2"},
     "q2":  {"P": "q3"},

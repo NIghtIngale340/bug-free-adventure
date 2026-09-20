@@ -1,11 +1,9 @@
 """Unit tests for BE-006: ValidationService and SimulationService."""
 
-import pytest
 
 from app.core.models import SimulationStatus
 from app.services.simulation_service import SimulationService
 from app.services.validation_service import ValidationService
-
 
 # --- ValidationService ------------------------------------------------------
 

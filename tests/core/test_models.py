@@ -1,5 +1,7 @@
 """Smoke tests for BE-002: frozen shared contracts."""
 
+import pytest
+
 from app.core.models import (
     AutomataMetadata,
     SimulationResult,
@@ -9,13 +11,12 @@ from app.core.models import (
 
 
 def test_transition_step_is_frozen() -> None:
+    from dataclasses import FrozenInstanceError
+
     step = TransitionStep(1, "E", "q0", "q1", True, "prefix E")
     assert step.symbol == "E"
-    try:
+    with pytest.raises(FrozenInstanceError):
         step.symbol = "M"  # type: ignore[misc]
-    except Exception:
-        return
-    raise AssertionError("TransitionStep should be frozen")
 
 
 def test_simulation_result_construction() -> None:

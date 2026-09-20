@@ -9,7 +9,6 @@ produces a complete SimulationResult for Chester's GUI to render.
 This module is the ONLY place where acceptance is decided.
 """
 
-from typing import List, Optional
 
 from app.core.dfa import DFA
 from app.core.language import is_symbol_in_alphabet
@@ -18,10 +17,10 @@ from app.core.models import (
     SimulationStatus,
     TransitionStep,
 )
-from app.data.id_rules import START_STATE, TRAP_STATE
+from app.data.id_rules import TRAP_STATE
 
 
-def simulate(input_string: str, dfa: Optional[DFA] = None) -> SimulationResult:
+def simulate(input_string: str, dfa: DFA | None = None) -> SimulationResult:
     """
     Run `input_string` through the Minimized DFA and return a structured
     SimulationResult.
@@ -34,7 +33,7 @@ def simulate(input_string: str, dfa: Optional[DFA] = None) -> SimulationResult:
       - Ends elsewhere   -> REJECTED_NON_FINAL_STATE
     """
     dfa = dfa or DFA()
-    trace: List[TransitionStep] = []
+    trace: list[TransitionStep] = []
     total = len(input_string)
 
     # --- Layer 1a: empty input ------------------------------------------
