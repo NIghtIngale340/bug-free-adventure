@@ -22,11 +22,12 @@ class AutomataPage(QWidget):
     Simulator Page once a run has finished.
     """
 
-    def __init__(self, simulation_service, on_check_another, on_back_to_simulator, parent=None) -> None:
+    def __init__(self, simulation_service, on_check_another, on_back_to_simulator, on_view_tests=None, parent=None) -> None:
         super().__init__(parent)
         self._service = simulation_service
         self._on_check_another = on_check_another
         self._on_back_to_simulator = on_back_to_simulator
+        self._on_view_tests = on_view_tests
         self._result = None
 
         back_btn = QPushButton("←  Back")
@@ -45,11 +46,17 @@ class AutomataPage(QWidget):
         header_text.addWidget(title)
         header_text.addWidget(self._subtitle)
 
+        self._copy_markdown_btn = QPushButton("📋  Copy Markdown Trace")
+        self._copy_markdown_btn.setObjectName("SecondaryButton")
+        self._copy_markdown_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._copy_markdown_btn.clicked.connect(self._copy_markdown_report)
+
         header_row = QHBoxLayout()
         header_row.addWidget(back_btn)
         header_row.addSpacing(16)
         header_row.addLayout(header_text)
         header_row.addStretch()
+        header_row.addWidget(self._copy_markdown_btn)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -87,6 +94,12 @@ class AutomataPage(QWidget):
 
         bottom_row = QHBoxLayout()
         bottom_row.addWidget(check_another_btn)
+        if self._on_view_tests:
+            test_suite_btn = QPushButton("📋  Test Suite")
+            test_suite_btn.setObjectName("SecondaryButton")
+            test_suite_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            test_suite_btn.clicked.connect(self._on_view_tests)
+            bottom_row.addWidget(test_suite_btn)
         bottom_row.addStretch()
         bottom_row.addWidget(back_to_sim_btn)
 
@@ -344,3 +357,51 @@ class AutomataPage(QWidget):
 
     def _on_back_to_simulator_clicked(self) -> None:
         self._on_back_to_simulator()
+
+    def _copy_markdown_report(self) -> None:
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtCore import QTimer
+
+        metadata = self._service.get_metadata()
+        lines = [
+            "# Automata Theory Validation Report",
+            "**Course:** CCAUTOMA — 1st AY 2026",
+            "**Automaton:** Minimized DFA ($M = (Q, \\Sigma, \\delta, q_0, F)$)",
+            f"**States ($Q$):** {len(metadata.states)} states (`{', '.join(metadata.states)}`)",
+            f"**Alphabet ($\\Sigma$):** {len(metadata.alphabet)} symbols (`{', '.join(metadata.alphabet)}`)",
+            f"**Start State ($q_0$):** `{metadata.start_state}`",
+            f"**Accepting States ($F$):** `{', '.join(metadata.accepting_states)}`",
+            f"**Regular Expression:** `{metadata.re_pattern}`",
+            "",
+        ]
+
+        if self._result is not None:
+            res = self._result
+            verdict = "ACCEPTED" if res.accepted else "REJECTED"
+            lines.extend([
+                f"## Evaluation for Input: `{res.input_string}`",
+                f"- **Verdict:** **{verdict}**",
+                f"- **Status Code:** `{res.status.name}`",
+                f"- **Final State:** `{res.final_state or 'None'}`",
+                f"- **Symbols Processed:** {res.processed_symbols} / {res.total_symbols}",
+                f"- **Explanation:** {res.explanation}",
+                "",
+                "### Symbol-by-Symbol Transition Trace",
+                "| Step | Symbol | From State | To State | Valid? | Step Explanation |",
+                "| :---: | :---: | :---: | :---: | :---: | :--- |",
+            ])
+            for step in res.trace:
+                valid_str = "Yes" if step.is_valid else "No (Trap)"
+                lines.append(
+                    f"| {step.step} | `{step.symbol}` | `{step.from_state}` | `{step.to_state}` | {valid_str} | {step.explanation} |"
+                )
+        else:
+            lines.append("*(No individual input has been simulated yet. Run an ID to view the full trace.)*")
+
+        markdown_text = "\n".join(lines)
+        clipboard = QApplication.clipboard()
+        if clipboard:
+            clipboard.setText(markdown_text)
+
+        self._copy_markdown_btn.setText("✔  Copied to Clipboard!")
+        QTimer.singleShot(2500, lambda: self._copy_markdown_btn.setText("📋  Copy Markdown Trace"))

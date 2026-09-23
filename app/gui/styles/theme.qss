@@ -257,3 +257,108 @@ QPushButton:disabled {
     border-bottom: 1px solid #262B33;
     font-weight: 600;
 }
+
+/*  Quick Preset Buttons  */
+#PresetButton {
+    background-color: #171A20;
+    color: #C7CCD4;
+    border: 1px solid #2C323C;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+#PresetButton:hover {
+    background-color: #262B33;
+    color: #E8A93A;
+    border-color: #E8A93A;
+}
+
+/*  Playback Controls  */
+#ControlBar {
+    background-color: #12151B;
+    border: 1px solid #262B33;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+
+#ControlBarButton {
+    background-color: #171A20;
+    color: #E5E7EB;
+    border: 1px solid #2C323C;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+#ControlBarButton:hover {
+    background-color: #262B33;
+    color: #F3F4F6;
+    border-color: #4B5563;
+}
+
+#ControlBarButton:disabled {
+    color: #4B5563;
+    border-color: #1F242C;
+    background-color: #12151A;
+}
+
+#StepCallout {
+    background-color: #0F1116;
+    border: 1px solid #262B33;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+}
+
+/* Speed Slider */
+QSlider::groove:horizontal {
+    height: 6px;
+    background: #1B2028;
+    border-radius: 3px;
+}
+
+QSlider::sub-page:horizontal {
+    background: #E8A93A;
+    border-radius: 3px;
+}
+
+QSlider::handle:horizontal {
+    background: #F3F4F6;
+    border: 1px solid #E8A93A;
+    width: 14px;
+    margin-top: -4px;
+    margin-bottom: -4px;
+    border-radius: 7px;
+}
+
+/* Test Suite Page */
+#PassBadge {
+    background-color: #0F2A20;
+    color: #34D399;
+    border: 1px solid #1FAE7A;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+#FailBadge {
+    background-color: #2B1416;
+    color: #F87171;
+    border: 1px solid #E86B6B;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+#FilterButton[active="true"] {
+    background-color: #E8A93A;
+    color: #14161B;
+    border: none;
+    font-weight: 700;
+}
