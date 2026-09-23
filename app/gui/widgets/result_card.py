@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QPen, QColor
 from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton
 
-from app.gui.mock_core.models import SimulationResult
+from app.core.models import SimulationResult
 
 class _CloseIconButton(QPushButton):
     def __init__(self, parent: QWidget | None = None) -> None:

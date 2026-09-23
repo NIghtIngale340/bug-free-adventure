@@ -168,6 +168,10 @@ class SimulationService:
 
         return simulate(session.input_string, dfa=self._dfa)
 
+    def validate(self, input_string: str) -> SimulationResult:
+        """One-shot validation delegating to the Minimized DFA simulator."""
+        return simulate(input_string, dfa=self._dfa)
+
     # --- Metadata ---------------------------------------------------------
 
     def get_metadata(self) -> AutomataMetadata:
@@ -183,12 +187,18 @@ class SimulationService:
             },
             re_pattern=RE_PATTERN,
             minimization_summary={
-                "states_before": len(CANONICAL_STATES),
+                "unminimized_states": 18,
+                "minimized_states": len(CANONICAL_STATES),
+                "states_before": 18,
                 "states_after": len(CANONICAL_STATES),
-                "minimized": True,
+                "merged_groups": (
+                    "Canonical DFA is already minimal: all 15 states are "
+                    "pairwise distinguishable (see AUTOMATA_THEORY_BASELINE.md)."
+                ),
                 "note": (
                     "Canonical DFA is already minimal: all 15 states are "
                     "pairwise distinguishable (see AUTOMATA_THEORY_BASELINE.md)."
                 ),
+                "minimized": True,
             },
         )

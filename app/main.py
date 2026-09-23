@@ -16,7 +16,13 @@ def main() -> None:
     app = QApplication(sys.argv)
     _load_stylesheet(app)
 
-    service = MockAutomataService()
+    if "--mock" in sys.argv:
+        from app.gui.mock_services.services import MockAutomataService
+        service = MockAutomataService()
+    else:
+        from app.services.simulation_service import SimulationService
+        service = SimulationService()
+
     window = MainWindow(service)
     window.show()
 
