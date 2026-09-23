@@ -1,0 +1,259 @@
+* {
+    font-family: "Segoe UI", "Inter", sans-serif;
+    font-size: 13px;
+    color: #E5E7EB;
+}
+
+QMainWindow, QWidget {
+    background-color: #0B0D12;
+}
+
+/* Ensure labels inherit background or stay transparent */
+QLabel {
+    background-color: transparent;
+}
+
+#PageTitle {
+    font-size: 20px;
+    font-weight: 700;
+    color: #F3F4F6;
+    background-color: transparent;
+}
+
+#PageSubtitle {
+    color: #8B95A5;
+    font-size: 12px;
+    background-color: transparent;
+}
+
+#LandingCard {
+    background-color: #12151B;
+    border: 1px solid #262B33;
+    border-radius: 18px;
+}
+
+#LandingTitle {
+    color: #6B7280;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background-color: transparent;
+}
+
+#LandingInput {
+    padding: 14px;
+    font-size: 18px;
+    letter-spacing: 1px;
+    border: 1px solid #2C323C;
+    border-radius: 10px;
+    background: #0F1116;
+    color: #F3F4F6;
+    selection-background-color: #E8A93A;
+}
+
+#LandingInput:focus {
+    border: 1px solid #E8A93A;
+}
+
+#LandingLabel {
+    color: #8B95A5;
+    font-size: 13px;
+    background-color: transparent;
+}
+
+#LandingHint {
+    color: #566072;
+    font-size: 11px;
+    background-color: transparent;
+}
+
+#LandingError {
+    color: #E86B6B;
+    font-size: 12px;
+    background-color: transparent;
+}
+
+/*  Buttons  */
+QPushButton {
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: 1px solid #2C323C;
+    background-color: #171A20;
+    color: #E5E7EB;
+}
+
+QPushButton:hover {
+    background-color: #1D2129;
+}
+
+QPushButton:disabled {
+    color: #4B5563;
+}
+
+#PrimaryButton {
+    background-color: #E8A93A;
+    color: #14161B;
+    border: none;
+    font-weight: 600;
+}
+
+#PrimaryButton:hover {
+    background-color: #F0B854;
+}
+
+#GhostButton {
+    background-color: transparent;
+    border: none;
+    color: #8B95A5;
+    padding: 6px 4px;
+}
+
+#GhostButton:hover {
+    color: #E5E7EB;
+}
+
+/*  Result Card / Modal  */
+#ResultCard, #ResultModalCard {
+    background-color: #12151B;
+    border: 1px solid #262B33;
+    border-radius: 14px;
+    padding: 22px;
+}
+
+#StatusLabel {
+    font-size: 26px;
+    font-weight: 800;
+    padding: 14px;
+    border-radius: 10px;
+}
+
+#StatusLabel[state="idle"] {
+    color: #8B95A5;
+    background-color: #171A20;
+}
+
+#StatusLabel[state="warning"] {
+    color: #E8A93A;
+    background-color: #2E2510;
+}
+
+#StatusLabel[state="accepted"] {
+    color: #34D399;
+    background-color: #0F2A20;
+}
+
+#StatusLabel[state="rejected"] {
+    color: #F87171;
+    background-color: #2B1416;
+}
+
+/*  Ribbon (character tape)  */
+
+#RibbonContainer {
+    background-color: #12151B;
+    border: 1px solid #262B33;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+#RibbonCell {
+    border: 1px solid #2C323C;
+    border-radius: 6px;
+    background-color: #171A20;
+    color: #C7CCD4;
+    font-weight: 700;
+}
+
+#RibbonCell[active="true"] {
+    background-color: #2E2510;
+    border: 2px solid #E8A93A;
+    color: #F3F4F6;
+}
+
+#RibbonCell[done="true"] {
+    background-color: #0F2A20;
+    border: 1px solid #1FAE7A;
+    color: #34D399;
+}
+
+#CurrentStateBadge, #NextStateBadge {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background-color: #171A20;
+    border: 1px solid #262B33;
+    font-weight: 600;
+    color: #C7CCD4;
+}
+
+#ResultOverlayBackdrop {
+    background-color: rgba(5, 7, 10, 190);
+}
+
+#ModalCloseButton {
+    background-color: #171A20;
+    color: #C7CCD4;
+    border: 1px solid #262B33;
+    border-radius: 15px;
+    font-weight: 700;
+}
+
+#ModalCloseButton:hover {
+    background-color: #262B33;
+    color: #F3F4F6;
+}
+
+#SecondaryButton {
+    background-color: transparent;
+    color: #E8A93A;
+    border: 1px solid #3A2E12;
+    font-weight: 600;
+}
+
+#SecondaryButton:hover {
+    background-color: #1D1710;
+    color: #F0B854;
+}
+
+#SecondaryButton:disabled {
+    color: #4B5563;
+    border: 1px solid #262B33;
+}
+
+#AutomataCard {
+    background-color: #12151B;
+    border: 1px solid #262B33;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+#AutomataCardHeading {
+    color: #F3F4F6;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+#MonoLine {
+    font-family: "Consolas", "Courier New", monospace;
+    color: #C7CCD4;
+    background-color: #0F1116;
+    border: 1px solid #262B33;
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+#MatrixTable {
+    background-color: #0F1116;
+    border: 1px solid #262B33;
+    border-radius: 8px;
+    gridline-color: #1B2028;
+    color: #C7CCD4;
+}
+
+#MatrixTable QHeaderView::section {
+    background-color: #171A20;
+    color: #8B95A5;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #262B33;
+    font-weight: 600;
+}
