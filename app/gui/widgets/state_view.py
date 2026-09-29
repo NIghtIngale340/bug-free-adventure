@@ -54,6 +54,8 @@ class StateView(QWidget):
             cell.style().unpolish(cell)
             cell.style().polish(cell)
 
-    def set_states(self, current: str | None, nxt: str | None) -> None:
-        self._current_state_badge.setText(f"Current State: {current or '—'}")
-        self._next_state_badge.setText(f"Next State: {nxt or '—'}")
+    def set_states(self, current: str | None, nxt: str | None, mode: str = "DFA") -> None:
+        curr_label = "Current Subset (NFA)" if mode == "NFA" else "Current State"
+        next_label = "Next Subset (NFA)" if mode == "NFA" else "Next State"
+        self._current_state_badge.setText(f"{curr_label}: {current or '—'}")
+        self._next_state_badge.setText(f"{next_label}: {nxt or '—'}")

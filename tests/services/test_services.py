@@ -134,3 +134,24 @@ def test_metadata_transition_table_has_q0_entry() -> None:
     svc = SimulationService()
     meta = svc.get_metadata()
     assert meta.transition_table["q0"] == {"E": "q1"}
+
+
+def test_simulation_service_nfa_mode_stepping() -> None:
+    svc = SimulationService()
+    sid = svc.create_session("EMP-2026-0042", mode="NFA")
+    step1 = svc.step(sid)
+    assert step1 is not None
+    assert step1.from_state == "{q0}"
+    assert step1.to_state == "{q1}"
+    res = svc.run_all(sid)
+    assert res.accepted is True
+    assert res.final_state == "{q13}"
+
+
+def test_metadata_includes_nfa_summary() -> None:
+    svc = SimulationService()
+    meta = svc.get_metadata()
+    assert meta.nfa_summary is not None
+    assert meta.nfa_summary["start_state"] == "q0"
+    assert meta.nfa_summary["accepting_states"] == ["q13"]
+    assert len(meta.nfa_summary["subset_trace"]) > 0

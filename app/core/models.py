@@ -58,3 +58,4 @@ class AutomataMetadata:
     transition_table: dict[str, dict[str, str]]
     re_pattern: str
     minimization_summary: dict[str, Any]
+    nfa_summary: dict[str, Any] | None = None

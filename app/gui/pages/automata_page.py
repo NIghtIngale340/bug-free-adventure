@@ -69,13 +69,15 @@ class AutomataPage(QWidget):
         content_layout.setContentsMargins(2, 2, 2, 2)
 
         self._trace_card = self._make_section("Current Input Analysis")
-        self._tuple_card = self._make_section("Formal Definition  —  M = (Q, Σ, δ, q₀, F)")
+        self._tuple_card = self._make_section("Formal Definition  —  M_DFA = (Q, Σ, δ, q₀, F)")
+        self._nfa_card = self._make_section("NFA & Subset Construction  —  M_NFA → M_DFA")
         self._re_card = self._make_section("Regular Expression")
         self._matrix_card = self._make_section("δ — Transition Matrix (minimized DFA)")
         self._min_card = self._make_section("Minimization Summary")
 
         content_layout.addWidget(self._trace_card)
         content_layout.addWidget(self._tuple_card)
+        content_layout.addWidget(self._nfa_card)
         content_layout.addWidget(self._re_card)
         content_layout.addWidget(self._matrix_card)
         content_layout.addWidget(self._min_card)
@@ -146,10 +148,11 @@ class AutomataPage(QWidget):
         if result is not None:
             self._subtitle.setText(f'Explaining the run for "{result.input_string}".')
         else:
-            self._subtitle.setText("Formal definition of the minimized DFA used by the simulator.")
+            self._subtitle.setText("Formal definition of the minimized DFA and canonical NFA used by the simulator.")
 
         self._populate_trace(result)
         self._populate_tuple(metadata)
+        self._populate_nfa(metadata, result)
         self._populate_regex(metadata, result)
         self._populate_matrix(metadata, result)
         self._populate_minimization(metadata, result)
@@ -218,6 +221,100 @@ class AutomataPage(QWidget):
             label.setObjectName("MonoLine")
             label.setWordWrap(True)
             body.addWidget(label)
+
+    # NFA & Subset Construction
+    def _populate_nfa(self, metadata, result) -> None:
+        body = self._clear_body(self._nfa_card)
+        nfa_sum = metadata.nfa_summary or {}
+
+        # 1. Formal 5-tuple
+        nfa_states = nfa_sum.get("states", [])
+        start = nfa_sum.get("start_state", "q0")
+        accepting = nfa_sum.get("accepting_states", ["q13"])
+
+        lines = [
+            "M_NFA = (Q_NFA, Σ, δ_NFA, q₀, F_NFA)",
+            f"Q_NFA  = {{ {', '.join(nfa_states)} }}  (14 linear states + ∅ dead state)",
+            f"Σ      = {{ {', '.join(metadata.alphabet)} }}",
+            f"q₀     = {start}",
+            f"F_NFA  = {{ {', '.join(accepting)} }}",
+        ]
+        for line in lines:
+            lbl = QLabel(line)
+            lbl.setObjectName("MonoLine")
+            lbl.setWordWrap(True)
+            body.addWidget(lbl)
+
+        # 2. Subset Construction mapping table
+        subset_trace = nfa_sum.get("subset_trace", [])
+        if subset_trace:
+            table_heading = QLabel("Subset Construction Mapping (Rabin-Scott Algorithm):")
+            table_heading.setObjectName("MonoLine")
+            body.addWidget(table_heading)
+
+            table = QTableWidget(len(subset_trace) + 1, 4)
+            table.setObjectName("MatrixTable")
+            table.setHorizontalHeaderLabels(["DFA State", "NFA Subset", "Automaton Meaning", "Valid Transition Class"])
+            table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            table.verticalHeader().setVisible(False)
+            table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+            table.setMinimumHeight(min(320, 40 + 26 * (len(subset_trace) + 1)))
+
+            meanings = {
+                "D0": ("Initial state (ε-closure)", "'E' → {q1}"),
+                "D1": ("Prefix 'E' consumed", "'M' → {q2}"),
+                "D2": ("Prefix 'EM' consumed", "'P' → {q3}"),
+                "D3": ("Prefix 'EMP' consumed", "'-' → {q4}"),
+                "D4": ("Prefix 'EMP-' consumed", "0–9 → {q5}"),
+                "D5": ("Year Digit 1 verified", "0–9 → {q6}"),
+                "D6": ("Year Digit 2 verified", "0–9 → {q7}"),
+                "D7": ("Year Digit 3 verified", "0–9 → {q8}"),
+                "D8": ("Year YYYY complete", "'-' → {q9}"),
+                "D9": ("Separator 'EMP-YYYY-' verified", "0–9 → {q10}"),
+                "D10": ("Sequence Digit 1 verified", "0–9 → {q11}"),
+                "D11": ("Sequence Digit 2 verified", "0–9 → {q12}"),
+                "D12": ("Sequence Digit 3 verified", "0–9 → {q13}"),
+                "D13": ("Sequence Digit 4 (NNNN) — ACCEPTING (F)", "Any Σ → ∅"),
+            }
+
+            for row, (dfa_name, subset_states) in enumerate(subset_trace):
+                subset_str = "{" + ", ".join(subset_states) + "}"
+                meaning, moves = meanings.get(dfa_name, ("Sequential state", "—"))
+                s_name = subset_states[0] if subset_states else "?"
+                table.setItem(row, 0, QTableWidgetItem(f"{dfa_name} ({s_name})"))
+                table.setItem(row, 1, QTableWidgetItem(subset_str))
+                table.setItem(row, 2, QTableWidgetItem(meaning))
+                table.setItem(row, 3, QTableWidgetItem(moves))
+
+            # Add dead state D_trap
+            last_row = len(subset_trace)
+            table.setItem(last_row, 0, QTableWidgetItem("D_trap (q_trap)"))
+            table.setItem(last_row, 1, QTableWidgetItem("∅"))
+            table.setItem(last_row, 2, QTableWidgetItem("Dead / Trap state (rejecting)"))
+            table.setItem(last_row, 3, QTableWidgetItem("Any Σ → ∅"))
+
+            # Highlight active path if run result is provided
+            if result is not None and result.trace:
+                visited = {step.from_state for step in result.trace} | {result.final_state or ""}
+                for row, (dfa_name, subset_states) in enumerate(subset_trace):
+                    sub_str = "{" + ", ".join(subset_states) + "}"
+                    s_name = subset_states[0] if subset_states else ""
+                    if sub_str in visited or s_name in visited:
+                        is_final = result.accepted and (sub_str == result.final_state or s_name == result.final_state)
+                        bg = _ACCEPT_COLOR if is_final else _USED_COLOR
+                        for col in range(4):
+                            it = table.item(row, col)
+                            if it:
+                                it.setBackground(bg)
+
+            body.addWidget(table)
+
+        note_text = nfa_sum.get("note", "")
+        if note_text:
+            note = QLabel(note_text)
+            note.setObjectName("PageSubtitle")
+            note.setWordWrap(True)
+            body.addWidget(note)
 
     # Regular Expression
     def _populate_regex(self, metadata, result) -> None:
@@ -363,17 +460,36 @@ class AutomataPage(QWidget):
         from PySide6.QtCore import QTimer
 
         metadata = self._service.get_metadata()
+        nfa_sum = metadata.nfa_summary or {}
+        nfa_states = nfa_sum.get("states", [])
+
         lines = [
             "# Automata Theory Validation Report",
             "**Course:** CCAUTOMA — 1st AY 2026",
-            "**Automaton:** Minimized DFA ($M = (Q, \\Sigma, \\delta, q_0, F)$)",
-            f"**States ($Q$):** {len(metadata.states)} states (`{', '.join(metadata.states)}`)",
-            f"**Alphabet ($\\Sigma$):** {len(metadata.alphabet)} symbols (`{', '.join(metadata.alphabet)}`)",
-            f"**Start State ($q_0$):** `{metadata.start_state}`",
-            f"**Accepting States ($F$):** `{', '.join(metadata.accepting_states)}`",
-            f"**Regular Expression:** `{metadata.re_pattern}`",
+            "**Language:** $L = \\{ \\text{EMP-YYYY-NNNN} \\}$",
+            "**Pipeline:** $\\text{Regular Expression} \\longrightarrow \\text{Canonical NFA} \\xrightarrow{\\text{Subset Construction}} \\text{DFA} \\xrightarrow{\\text{Hopcroft}} \\text{Minimized DFA}$",
             "",
+            "## Formal Automata Specifications",
+            "### 1. Canonical NFA ($M_{\\text{NFA}}$)",
+            f"- **States ($Q_{{\\text{{NFA}}}}$):** {len(nfa_states)} linear states (`{', '.join(nfa_states)}`) + dead subset $\\emptyset$",
+            f"- **Alphabet ($\\Sigma$):** {len(metadata.alphabet)} symbols (`{', '.join(metadata.alphabet)}`)",
+            f"- **Start State ($q_0$):** `{nfa_sum.get('start_state', 'q0')}`",
+            f"- **Accepting States ($F_{{\\text{{NFA}}}}$):** `{', '.join(nfa_sum.get('accepting_states', ['q13']))}`",
+            "",
+            "### 2. Minimized DFA ($M_{\\text{DFA}}$)",
+            f"- **States ($Q$):** {len(metadata.states)} states (`{', '.join(metadata.states)}`)",
+            f"- **Start State ($q_0$):** `{metadata.start_state}`",
+            f"- **Accepting States ($F$):** `{', '.join(metadata.accepting_states)}`",
+            f"- **Regular Expression:** `{metadata.re_pattern}`",
+            "",
+            "### 3. Rabin-Scott Subset Construction Mapping",
+            "| DFA State | NFA State Subset | Description |",
+            "| :---: | :---: | :--- |",
         ]
+        for dfa_name, subset in nfa_sum.get("subset_trace", []):
+            lines.append(f"| `{dfa_name}` | `{{{', '.join(subset)}}}` | Mapped 1-to-1 via $\\varepsilon$-closure |")
+        lines.append("| `D_trap` | `∅` | Dead / Trap rejecting state |")
+        lines.append("")
 
         if self._result is not None:
             res = self._result

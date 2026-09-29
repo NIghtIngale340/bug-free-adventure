@@ -82,3 +82,30 @@ def test_subset_construction_agrees_with_canonical() -> None:
     ]
     for s in samples:
         assert converted.accepts(s) == canonical.accepts(s)
+
+
+def test_simulate_nfa_valid_input() -> None:
+    from app.core.nfa import simulate_nfa
+    res = simulate_nfa("EMP-2026-0042")
+    assert res.accepted is True
+    assert res.status.name == "ACCEPTED"
+    assert res.final_state == "{q13}"
+    assert len(res.trace) == 13
+    assert res.trace[0].from_state == "{q0}"
+    assert res.trace[0].to_state == "{q1}"
+
+
+def test_simulate_nfa_invalid_symbol() -> None:
+    from app.core.nfa import simulate_nfa
+    res = simulate_nfa("EMP-2026-12A4")
+    assert res.accepted is False
+    assert res.status.name == "REJECTED_INVALID_SYMBOL"
+    assert res.final_state == "∅"
+
+
+def test_simulate_nfa_mismatch_transition() -> None:
+    from app.core.nfa import simulate_nfa
+    res = simulate_nfa("PMP-2026-0042")
+    assert res.accepted is False
+    assert res.status.name == "REJECTED_NO_TRANSITION"
+    assert res.final_state == "∅"

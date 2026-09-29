@@ -28,6 +28,7 @@ class SimulatorPage(QWidget):
         self._loaded_string: str = ""
         self._cursor: int = 0
         self._is_paused: bool = False
+        self._mode: str = "DFA"  # "DFA" or "NFA"
 
         self._timer = QTimer(self)
         self._interval_ms = 600
@@ -42,22 +43,30 @@ class SimulatorPage(QWidget):
         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         back_btn.clicked.connect(self._cancel_and_back)
 
-        title = QLabel("DFA Simulation")
-        title.setObjectName("PageTitle")
+        self._title = QLabel("DFA Simulation")
+        self._title.setObjectName("PageTitle")
 
         self._status_label = QLabel("")
         self._status_label.setObjectName("PageSubtitle")
 
         header_text = QVBoxLayout()
         header_text.setSpacing(2)
-        header_text.addWidget(title)
+        header_text.addWidget(self._title)
         header_text.addWidget(self._status_label)
+
+        self._mode_btn = QPushButton("🔀  Model: Minimized DFA")
+        self._mode_btn.setObjectName("ModeToggleButton")
+        self._mode_btn.setProperty("mode", "DFA")
+        self._mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._mode_btn.setToolTip("Click to toggle between Minimized DFA and Canonical NFA simulation")
+        self._mode_btn.clicked.connect(self._toggle_mode)
 
         header_row = QHBoxLayout()
         header_row.addWidget(back_btn)
         header_row.addSpacing(16)
         header_row.addLayout(header_text)
         header_row.addStretch()
+        header_row.addWidget(self._mode_btn)
 
         self._state_view = StateView()
 
@@ -157,6 +166,25 @@ class SimulatorPage(QWidget):
         root.addWidget(content, 0, 0)
         root.addWidget(self._overlay, 0, 0)
 
+    def _toggle_mode(self) -> None:
+        """Toggle between Minimized DFA and Canonical NFA mode."""
+        if self._mode == "DFA":
+            self._mode = "NFA"
+            self._mode_btn.setText("🔀  Model: Canonical NFA (Subsets)")
+            self._mode_btn.setProperty("mode", "NFA")
+            self._title.setText("NFA Simulation (Subset Traversal)")
+        else:
+            self._mode = "DFA"
+            self._mode_btn.setText("🔀  Model: Minimized DFA")
+            self._mode_btn.setProperty("mode", "DFA")
+            self._title.setText("DFA Simulation")
+
+        self._mode_btn.style().unpolish(self._mode_btn)
+        self._mode_btn.style().polish(self._mode_btn)
+
+        if self._loaded_string:
+            self.load_and_run(self._loaded_string)
+
     def load_and_run(self, input_string: str) -> None:
         self._timer.stop()
         self._overlay.dismiss(silent=True)
@@ -170,14 +198,20 @@ class SimulatorPage(QWidget):
         self._fast_forward_btn.setEnabled(True)
         self._restart_btn.setEnabled(True)
 
-        self._session_id = self._service.create_session(input_string)
+        self._session_id = self._service.create_session(input_string, mode=self._mode)
 
+        start_state_str = "{q0}" if self._mode == "NFA" else "q0"
         self._state_view.load_string(input_string)
-        self._state_view.set_states("q0", None)
+        self._state_view.set_states(start_state_str, None, mode=self._mode)
         self._diagram.reset()
-        self._diagram.highlight("q0")
-        self._status_label.setText(f'Processing "{input_string}" symbol by symbol…')
-        self._callout_label.setText("Start state: q0 (Ready to evaluate first symbol)")
+        self._diagram.highlight(start_state_str)
+
+        if self._mode == "NFA":
+            self._status_label.setText(f'Processing "{input_string}" symbol by symbol on Canonical NFA (Subsets)…')
+            self._callout_label.setText("Start subset: {q0} (ε-closure of q0 — Ready to evaluate first symbol)")
+        else:
+            self._status_label.setText(f'Processing "{input_string}" symbol by symbol on Minimized DFA…')
+            self._callout_label.setText("Start state: q0 (Ready to evaluate first symbol)")
         self._callout_label.setStyleSheet("color: #E5E7EB;")
 
         self._timer.start()
@@ -186,7 +220,8 @@ class SimulatorPage(QWidget):
         if self._is_paused:
             self._is_paused = False
             self._pause_btn.setText("⏸  Pause")
-            self._status_label.setText(f'Processing "{self._loaded_string}" symbol by symbol…')
+            desc = "Canonical NFA" if self._mode == "NFA" else "Minimized DFA"
+            self._status_label.setText(f'Processing "{self._loaded_string}" symbol by symbol on {desc}…')
             self._timer.start()
         else:
             self._is_paused = True
@@ -205,9 +240,9 @@ class SimulatorPage(QWidget):
             step = self._service.step(self._session_id)
             if step is None:
                 break
-            trapped = (step.to_state == "q_trap")
+            trapped = (step.to_state in ("q_trap", "∅"))
             self._state_view.set_cursor(self._cursor)
-            self._state_view.set_states(step.from_state, step.to_state)
+            self._state_view.set_states(step.from_state, step.to_state, mode=self._mode)
             self._diagram.highlight(step.to_state, trapped=trapped)
             self._cursor += 1
             if trapped:
@@ -232,23 +267,35 @@ class SimulatorPage(QWidget):
             self._finish()
             return
 
-        trapped = (step.to_state == "q_trap")
+        trapped = (step.to_state in ("q_trap", "∅"))
         self._state_view.set_cursor(self._cursor)
-        self._state_view.set_states(step.from_state, step.to_state)
+        self._state_view.set_states(step.from_state, step.to_state, mode=self._mode)
         self._diagram.highlight(step.to_state, trapped=trapped)
         self._cursor += 1
 
         # Live Mathematical Delta Callout
-        if trapped:
-            self._callout_label.setText(
-                f"Step {step.step}:  δ({step.from_state}, '{step.symbol}') = q_trap  —  ✘ {step.explanation}"
-            )
-            self._callout_label.setStyleSheet("color: #F87171; font-weight: bold;")
+        if self._mode == "NFA":
+            if trapped:
+                self._callout_label.setText(
+                    f"Step {step.step}:  δ_NFA({step.from_state}, '{step.symbol}') = ∅  —  ✘ {step.explanation}"
+                )
+                self._callout_label.setStyleSheet("color: #F87171; font-weight: bold;")
+            else:
+                self._callout_label.setText(
+                    f"Step {step.step}:  δ_NFA({step.from_state}, '{step.symbol}') = {step.to_state}  —  ✓ {step.explanation}"
+                )
+                self._callout_label.setStyleSheet("color: #C084FC; font-weight: bold;")
         else:
-            self._callout_label.setText(
-                f"Step {step.step}:  δ({step.from_state}, '{step.symbol}') = {step.to_state}  —  ✓ {step.explanation}"
-            )
-            self._callout_label.setStyleSheet("color: #34D399; font-weight: bold;")
+            if trapped:
+                self._callout_label.setText(
+                    f"Step {step.step}:  δ({step.from_state}, '{step.symbol}') = q_trap  —  ✘ {step.explanation}"
+                )
+                self._callout_label.setStyleSheet("color: #F87171; font-weight: bold;")
+            else:
+                self._callout_label.setText(
+                    f"Step {step.step}:  δ({step.from_state}, '{step.symbol}') = {step.to_state}  —  ✓ {step.explanation}"
+                )
+                self._callout_label.setStyleSheet("color: #34D399; font-weight: bold;")
 
         if trapped or self._cursor >= len(self._loaded_string):
             self._finish()
@@ -259,12 +306,13 @@ class SimulatorPage(QWidget):
         self._next_step_btn.setEnabled(False)
         self._fast_forward_btn.setEnabled(False)
 
-        result = self._service.validate(self._loaded_string)
+        result = self._service.validate(self._loaded_string, mode=self._mode)
         self._last_result = result
+        trapped = result.final_state in ("q_trap", "∅", None)
         self._diagram.highlight(
-            result.final_state, trapped=(result.final_state == "q_trap"), finished=True
+            result.final_state, trapped=trapped, finished=True
         )
-        self._status_label.setText("Simulation complete.")
+        self._status_label.setText(f"{self._mode} Simulation complete.")
         self._automata_btn.setEnabled(True)
         QTimer.singleShot(450, lambda: self._overlay.show_result(result))
 

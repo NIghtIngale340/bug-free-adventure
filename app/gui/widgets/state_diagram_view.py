@@ -220,10 +220,23 @@ class StateDiagramView(QGraphicsView):
                 node.setBrush(_IDLE_BRUSH)
                 node.setPen(_BORDER)
 
-    def highlight(self, current_state: str, trapped: bool = False, finished: bool = False) -> None:
+    def highlight(self, current_state: str | set[str] | frozenset[str] | None, trapped: bool = False, finished: bool = False) -> None:
+        if current_state is None:
+            active_states: set[str] = set()
+        elif isinstance(current_state, (set, frozenset)):
+            active_states = set(current_state)
+        elif isinstance(current_state, str):
+            clean = current_state.strip("{} ").replace(" ", "")
+            if clean in ("", "∅", "q_trap", "empty"):
+                active_states = {_TRAP} if trapped else set()
+            else:
+                active_states = set(clean.split(","))
+        else:
+            active_states = set()
+
         for state, node in self._nodes.items():
-            if state == current_state:
-                if trapped:
+            if state in active_states:
+                if trapped or state == _TRAP:
                     node.setBrush(_TRAP_ACTIVE_BRUSH)
                     node.setPen(_TRAP_ACTIVE_BORDER)
                 elif finished and state in self._accepting:
@@ -233,7 +246,12 @@ class StateDiagramView(QGraphicsView):
                     node.setBrush(_ACTIVE_BRUSH)
                     node.setPen(_ACTIVE_BORDER)
             elif state == _TRAP:
-                continue
+                if trapped and not active_states:
+                    node.setBrush(_TRAP_ACTIVE_BRUSH)
+                    node.setPen(_TRAP_ACTIVE_BORDER)
+                else:
+                    node.setBrush(_TRAP_BRUSH)
+                    node.setPen(_TRAP_BORDER)
             else:
                 node.setBrush(_VISITED_BRUSH)
                 node.setPen(_VISITED_BORDER)

@@ -17,6 +17,12 @@ still works.
 from collections import deque
 
 from app.core.dfa import DFA
+from app.core.language import is_symbol_in_alphabet
+from app.core.models import (
+    SimulationResult,
+    SimulationStatus,
+    TransitionStep,
+)
 from app.data.id_rules import (
     ACCEPTING_STATES,
     CANONICAL_STATES,
@@ -147,3 +153,135 @@ def subset_construction(nfa: NFA) -> tuple[DFA, list[tuple[str, set[str]]]]:
         trap_state="D_trap",
     )
     return dfa, trace
+
+
+def _format_subset(states: set[str] | frozenset[str]) -> str:
+    """Format an NFA state subset as mathematical set notation {q0, q1} or ∅."""
+    if not states:
+        return "∅"
+    return "{" + ", ".join(sorted(states)) + "}"
+
+
+def simulate_nfa(input_string: str, nfa: NFA | None = None) -> SimulationResult:
+    """
+    Run `input_string` through the Canonical NFA tracking active subsets.
+
+    Rules:
+      - Empty input      -> REJECTED_EMPTY_INPUT, final_state=None
+      - Symbol outside Σ -> REJECTED_INVALID_SYMBOL, to_state="∅"
+      - No valid move    -> transition to ∅, REJECTED_NO_TRANSITION
+      - Ends in subset containing q13 -> ACCEPTED
+      - Ends elsewhere   -> REJECTED_NON_FINAL_STATE
+    """
+    nfa = nfa or canonical_nfa()
+    trace: list[TransitionStep] = []
+    total = len(input_string)
+
+    if total == 0:
+        return SimulationResult(
+            input_string="",
+            accepted=False,
+            status=SimulationStatus.REJECTED_EMPTY_INPUT,
+            final_state=None,
+            trace=[],
+            error_message="Input string cannot be empty.",
+            error_position=None,
+            processed_symbols=0,
+            total_symbols=0,
+            explanation="Please enter an Employee ID.",
+        )
+
+    current_subset = epsilon_closure(nfa, {nfa.start_state})
+    state_str = _format_subset(current_subset)
+
+    for idx, symbol in enumerate(input_string):
+        step_no = idx + 1
+
+        if not is_symbol_in_alphabet(symbol):
+            trace.append(
+                TransitionStep(
+                    step=step_no,
+                    symbol=symbol,
+                    from_state=state_str,
+                    to_state="∅",
+                    is_valid=False,
+                    explanation=f"Symbol {symbol!r} is outside the alphabet Sigma.",
+                )
+            )
+            return SimulationResult(
+                input_string=input_string,
+                accepted=False,
+                status=SimulationStatus.REJECTED_INVALID_SYMBOL,
+                final_state="∅",
+                trace=trace,
+                error_message=f"Invalid symbol {symbol!r} at position {idx}.",
+                error_position=idx,
+                processed_symbols=step_no,
+                total_symbols=total,
+                explanation=f"Rejected: {symbol!r} is not part of the Employee ID alphabet.",
+            )
+
+        # Valid symbol: compute move + epsilon closure
+        next_subset = epsilon_closure(nfa, move(nfa, current_subset, symbol))
+        to_state_str = _format_subset(next_subset)
+        is_valid = bool(next_subset)
+
+        if not is_valid:
+            trace.append(
+                TransitionStep(
+                    step=step_no,
+                    symbol=symbol,
+                    from_state=state_str,
+                    to_state="∅",
+                    is_valid=False,
+                    explanation=f"No valid NFA transition from {state_str} on {symbol!r}.",
+                )
+            )
+            return SimulationResult(
+                input_string=input_string,
+                accepted=False,
+                status=SimulationStatus.REJECTED_NO_TRANSITION,
+                final_state="∅",
+                trace=trace,
+                error_message=f"No valid transition from NFA subset {state_str} on {symbol!r} at position {idx}.",
+                error_position=idx,
+                processed_symbols=step_no,
+                total_symbols=total,
+                explanation=f"Rejected: no NFA transition on {symbol!r} at position {idx}.",
+            )
+
+        trace.append(
+            TransitionStep(
+                step=step_no,
+                symbol=symbol,
+                from_state=state_str,
+                to_state=to_state_str,
+                is_valid=True,
+                explanation=f"{state_str} --{symbol}--> {to_state_str}",
+            )
+        )
+        current_subset = next_subset
+        state_str = to_state_str
+
+    accepted = bool(current_subset & nfa.accepting_states)
+    if accepted:
+        status = SimulationStatus.ACCEPTED
+        explanation = "Input recognized as a valid Employee ID by Canonical NFA."
+    else:
+        status = SimulationStatus.REJECTED_NON_FINAL_STATE
+        explanation = (
+            f"Input ended in non-accepting NFA subset {state_str}; expected {sorted(nfa.accepting_states)}."
+        )
+
+    return SimulationResult(
+        input_string=input_string,
+        accepted=accepted,
+        status=status,
+        final_state=state_str,
+        trace=trace,
+        error_message=None if accepted else f"Non-accepting NFA subset {state_str}.",
+        error_position=None if accepted else total - 1,
+        processed_symbols=total,
+        total_symbols=total,
+        explanation=explanation,
+    )
