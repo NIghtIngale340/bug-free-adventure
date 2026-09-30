@@ -1,390 +1,97 @@
-* {
-    font-family: "Segoe UI", "Inter", sans-serif;
-    font-size: 13px;
-    color: #E5E7EB;
-}
+* { font-family: @font_ui@; font-size: 13px; color: @text@; }
+QMainWindow, QWidget { background-color: @bg@; }
+QLabel { background-color: transparent; }
+QToolTip { background-color: @surface2@; color: @text@; border: 1px solid @border@; padding: 4px 6px; }
 
-QMainWindow, QWidget {
-    background-color: #0B0D12;
-}
+/* ---- header / navigation ---- */
+#AppHeader { background-color: @surface@; border-bottom: 1px solid @border@; }
+#AppTitle { font-size: 15px; font-weight: 700; background: transparent; }
+#AppSub { color: @muted@; font-size: 12px; background: transparent; }
+#NavButton { background: transparent; border: none; border-bottom: 2px solid transparent;
+             border-radius: 0; padding: 14px 16px; color: @muted@; font-weight: 600; }
+#NavButton:hover { color: @text@; }
+#NavButton:checked { color: @accent@; border-bottom: 2px solid @accent@; }
 
-/* Ensure labels inherit background or stay transparent */
-QLabel {
-    background-color: transparent;
-}
+/* ---- text roles ---- */
+#Muted { color: @muted@; background: transparent; }
+#Heading { font-size: 17px; font-weight: 700; background: transparent; }
+#SubHeading { font-size: 13px; font-weight: 700; color: @accent@; background: transparent; }
+#Mono { font-family: @font_mono@; background: transparent; }
+#MonoBlock { font-family: @font_mono@; background-color: @surface@; border: 1px solid @border@;
+             border-radius: 8px; padding: 10px 12px; }
+#BigMono { font-family: @font_mono@; font-size: 22px; font-weight: 700; color: @accent@;
+           background-color: @surface@; border: 1px solid @border@; border-radius: 10px; padding: 14px 18px; }
+#Chip { background-color: @surface2@; border: 1px solid @border@; border-radius: 12px;
+        padding: 3px 11px; font-family: @font_mono@; }
+#InfoStrip { background-color: @surface@; border: 1px solid @border@; border-radius: 8px; padding: 6px 10px; color: @muted@; }
+#Card { background-color: @surface@; border: 1px solid @border@; border-radius: 10px; }
 
-#PageTitle {
-    font-size: 20px;
-    font-weight: 700;
-    color: #F3F4F6;
-    background-color: transparent;
-}
+/* ---- buttons / inputs ---- */
+QPushButton { padding: 8px 16px; border-radius: 7px; border: 1px solid @border@;
+              background-color: @surface2@; font-weight: 600; }
+QPushButton:hover { border-color: @muted@; }
+QPushButton:focus { border: 1px solid @accent@; }
+#PrimaryButton:focus { border: 2px solid @text@; }
+QPushButton:disabled { color: #6B7688; background-color: @surface@; border-color: @border@; }
+#PrimaryButton { background-color: @accent@; color: @accent_text@; border: none; }
+#PrimaryButton:hover { background-color: @accent_hover@; }
+#PrimaryButton:disabled { background-color: @accent_bg@; color: #8C7B4E; }
+#ToolButton { padding: 3px 10px; font-size: 12px; }
+QLineEdit, QPlainTextEdit { background-color: @surface@; border: 1px solid @border@; border-radius: 7px;
+                            padding: 8px 10px; selection-background-color: @accent@;
+                            selection-color: @accent_text@; placeholder-text-color: #7D889A; }
+QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus { border: 1px solid @accent@; }
+#IdInput { font-family: @font_mono@; font-size: 17px; letter-spacing: 1px; padding: 9px 12px; }
+QComboBox { background-color: @surface2@; border: 1px solid @border@; border-radius: 7px; padding: 7px 10px; }
+QComboBox QAbstractItemView { background-color: @surface2@; selection-background-color: @accent_bg@;
+                              selection-color: @text@; border: 1px solid @border@; }
 
-#PageSubtitle {
-    color: #8B95A5;
-    font-size: 12px;
-    background-color: transparent;
-}
+/* ---- tape (input ribbon) ---- */
+#TapeFrame { background-color: @surface@; border: 1px solid @border@; border-radius: 10px; }
+#TapeCell { font-family: @font_mono@; font-size: 15px; font-weight: 700; border-radius: 6px;
+            border: 1px solid @border@; background-color: @surface2@; color: @text@; }
+#TapeCell[cell="done"] { background-color: @accent_bg@; border: 1px solid @accent@; color: @accent@; }
+#TapeCell[cell="active"] { background-color: @accent@; border: 1px solid @accent@; color: @accent_text@; }
+#TapeCell[cell="error"], #TapeCell[cell="illegal"] { background-color: @bad_bg@; border: 2px solid @bad@; color: @bad@; }
+#TapeCell[cell="final"] { background-color: @ok_bg@; border: 1px solid @ok@; color: @ok@; }
+#TapeInner, #TapeViewport, #TapeFrame QScrollArea { background: transparent; border: none; }
+#TapeSeg { min-height: 3px; max-height: 3px; border-radius: 1px; background: transparent; }
+#TapeSeg[seg="a"] { background-color: @seg_a@; }
+#TapeSeg[seg="b"] { background-color: @seg_b@; }
+#TapeIndex { color: @muted@; font-size: 10px; font-family: @font_mono@; }
 
-#LandingCard {
-    background-color: #12151B;
-    border: 1px solid #262B33;
-    border-radius: 18px;
-}
+/* ---- verdict banner ---- */
+#Banner { background-color: @surface@; border: 1px solid @border@; border-radius: 10px; }
+#BannerTitle { font-size: 22px; font-weight: 800; letter-spacing: 1px; background: transparent; }
+#BannerText { background: transparent; color: @text@; }
+#Banner[state="accepted"] { background-color: @ok_bg@; border: 1px solid @ok@; }
+#Banner[state="accepted"] #BannerTitle { color: @ok@; }
+#Banner[state="rejected"] { background-color: @bad_bg@; border: 1px solid @bad@; }
+#Banner[state="rejected"] #BannerTitle { color: @bad@; }
+#Banner[state="running"] #BannerTitle { color: @accent@; }
+#Banner[state="idle"] #BannerTitle { color: @muted@; }
 
-#LandingTitle {
-    color: #6B7280;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    background-color: transparent;
-}
-
-#LandingInput {
-    padding: 14px;
-    font-size: 18px;
-    letter-spacing: 1px;
-    border: 1px solid #2C323C;
-    border-radius: 10px;
-    background: #0F1116;
-    color: #F3F4F6;
-    selection-background-color: #E8A93A;
-}
-
-#LandingInput:focus {
-    border: 1px solid #E8A93A;
-}
-
-#LandingLabel {
-    color: #8B95A5;
-    font-size: 13px;
-    background-color: transparent;
-}
-
-#LandingHint {
-    color: #566072;
-    font-size: 11px;
-    background-color: transparent;
-}
-
-#LandingError {
-    color: #E86B6B;
-    font-size: 12px;
-    background-color: transparent;
-}
-
-/*  Buttons  */
-QPushButton {
-    padding: 9px 18px;
-    border-radius: 8px;
-    border: 1px solid #2C323C;
-    background-color: #171A20;
-    color: #E5E7EB;
-}
-
-QPushButton:hover {
-    background-color: #1D2129;
-}
-
-QPushButton:disabled {
-    color: #4B5563;
-}
-
-#PrimaryButton {
-    background-color: #E8A93A;
-    color: #14161B;
-    border: none;
-    font-weight: 600;
-}
-
-#PrimaryButton:hover {
-    background-color: #F0B854;
-}
-
-#GhostButton {
-    background-color: transparent;
-    border: none;
-    color: #8B95A5;
-    padding: 6px 4px;
-}
-
-#GhostButton:hover {
-    color: #E5E7EB;
-}
-
-/*  Result Card / Modal  */
-#ResultCard, #ResultModalCard {
-    background-color: #12151B;
-    border: 1px solid #262B33;
-    border-radius: 14px;
-    padding: 22px;
-}
-
-#StatusLabel {
-    font-size: 26px;
-    font-weight: 800;
-    padding: 14px;
-    border-radius: 10px;
-}
-
-#StatusLabel[state="idle"] {
-    color: #8B95A5;
-    background-color: #171A20;
-}
-
-#StatusLabel[state="warning"] {
-    color: #E8A93A;
-    background-color: #2E2510;
-}
-
-#StatusLabel[state="accepted"] {
-    color: #34D399;
-    background-color: #0F2A20;
-}
-
-#StatusLabel[state="rejected"] {
-    color: #F87171;
-    background-color: #2B1416;
-}
-
-/*  Ribbon (character tape)  */
-
-#RibbonContainer {
-    background-color: #12151B;
-    border: 1px solid #262B33;
-    border-radius: 10px;
-    padding: 10px;
-}
-
-#RibbonCell {
-    border: 1px solid #2C323C;
-    border-radius: 6px;
-    background-color: #171A20;
-    color: #C7CCD4;
-    font-weight: 700;
-}
-
-#RibbonCell[active="true"] {
-    background-color: #2E2510;
-    border: 2px solid #E8A93A;
-    color: #F3F4F6;
-}
-
-#RibbonCell[done="true"] {
-    background-color: #0F2A20;
-    border: 1px solid #1FAE7A;
-    color: #34D399;
-}
-
-#CurrentStateBadge, #NextStateBadge {
-    padding: 6px 12px;
-    border-radius: 8px;
-    background-color: #171A20;
-    border: 1px solid #262B33;
-    font-weight: 600;
-    color: #C7CCD4;
-}
-
-#ResultOverlayBackdrop {
-    background-color: rgba(5, 7, 10, 190);
-}
-
-#ModalCloseButton {
-    background-color: #171A20;
-    color: #C7CCD4;
-    border: 1px solid #262B33;
-    border-radius: 15px;
-    font-weight: 700;
-}
-
-#ModalCloseButton:hover {
-    background-color: #262B33;
-    color: #F3F4F6;
-}
-
-#SecondaryButton {
-    background-color: transparent;
-    color: #E8A93A;
-    border: 1px solid #3A2E12;
-    font-weight: 600;
-}
-
-#SecondaryButton:hover {
-    background-color: #1D1710;
-    color: #F0B854;
-}
-
-#SecondaryButton:disabled {
-    color: #4B5563;
-    border: 1px solid #262B33;
-}
-
-#AutomataCard {
-    background-color: #12151B;
-    border: 1px solid #262B33;
-    border-radius: 12px;
-    padding: 16px;
-}
-
-#AutomataCardHeading {
-    color: #F3F4F6;
-    font-size: 14px;
-    font-weight: 700;
-}
-
-#MonoLine {
-    font-family: "Consolas", "Courier New", monospace;
-    color: #C7CCD4;
-    background-color: #0F1116;
-    border: 1px solid #262B33;
-    border-radius: 6px;
-    padding: 8px 10px;
-}
-
-#MatrixTable {
-    background-color: #0F1116;
-    border: 1px solid #262B33;
-    border-radius: 8px;
-    gridline-color: #1B2028;
-    color: #C7CCD4;
-}
-
-#MatrixTable QHeaderView::section {
-    background-color: #171A20;
-    color: #8B95A5;
-    padding: 6px;
-    border: none;
-    border-bottom: 1px solid #262B33;
-    font-weight: 600;
-}
-
-/*  Quick Preset Buttons  */
-#PresetButton {
-    background-color: #171A20;
-    color: #C7CCD4;
-    border: 1px solid #2C323C;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-#PresetButton:hover {
-    background-color: #262B33;
-    color: #E8A93A;
-    border-color: #E8A93A;
-}
-
-/*  Playback Controls  */
-#ControlBar {
-    background-color: #12151B;
-    border: 1px solid #262B33;
-    border-radius: 10px;
-    padding: 8px 12px;
-}
-
-#ControlBarButton {
-    background-color: #171A20;
-    color: #E5E7EB;
-    border: 1px solid #2C323C;
-    border-radius: 6px;
-    padding: 7px 14px;
-    font-weight: 600;
-    font-size: 12px;
-}
-
-#ControlBarButton:hover {
-    background-color: #262B33;
-    color: #F3F4F6;
-    border-color: #4B5563;
-}
-
-#ControlBarButton:disabled {
-    color: #4B5563;
-    border-color: #1F242C;
-    background-color: #12151A;
-}
-
-#StepCallout {
-    background-color: #0F1116;
-    border: 1px solid #262B33;
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-family: "Consolas", "Courier New", monospace;
-    font-size: 13px;
-}
-
-/* Speed Slider */
-QSlider::groove:horizontal {
-    height: 6px;
-    background: #1B2028;
-    border-radius: 3px;
-}
-
-QSlider::sub-page:horizontal {
-    background: #E8A93A;
-    border-radius: 3px;
-}
-
-QSlider::handle:horizontal {
-    background: #F3F4F6;
-    border: 1px solid #E8A93A;
-    width: 14px;
-    margin-top: -4px;
-    margin-bottom: -4px;
-    border-radius: 7px;
-}
-
-/* Test Suite Page */
-#PassBadge {
-    background-color: #0F2A20;
-    color: #34D399;
-    border: 1px solid #1FAE7A;
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-weight: 700;
-    font-size: 11px;
-}
-
-#FailBadge {
-    background-color: #2B1416;
-    color: #F87171;
-    border: 1px solid #E86B6B;
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-weight: 700;
-    font-size: 11px;
-}
-
-#FilterButton[active="true"] {
-    background-color: #E8A93A;
-    color: #14161B;
-    border: none;
-    font-weight: 700;
-}
-
-/* Mode Toggle Button: DFA vs NFA */
-#ModeToggleButton {
-    background-color: #121927;
-    border: 1px solid #2563EB;
-    color: #60A5FA;
-    font-weight: 600;
-    border-radius: 8px;
-    padding: 6px 14px;
-}
-
-#ModeToggleButton:hover {
-    background-color: #1A2436;
-    border-color: #93C5FD;
-}
-
-#ModeToggleButton[mode="NFA"] {
-    background-color: #211333;
-    border: 1px solid #9333EA;
-    color: #C084FC;
-}
-
-#ModeToggleButton[mode="NFA"]:hover {
-    background-color: #2D1A45;
-    border-color: #E9D5FF;
-}
+/* ---- tables / tabs / splitters ---- */
+QTableWidget { background-color: @surface@; border: 1px solid @border@; border-radius: 8px;
+               gridline-color: @border@; alternate-background-color: @surface@; }
+QTableWidget::item { padding: 3px 6px; }
+QTableWidget::item:selected { background-color: @accent_bg@; color: @text@; }
+QHeaderView::section { background-color: @surface2@; color: @muted@; padding: 6px; border: none;
+                       border-bottom: 1px solid @border@; font-weight: 700; }
+QTabWidget::pane { border: none; border-top: 1px solid @border@; }
+QTabBar::tab { background: transparent; color: @muted@; padding: 9px 14px; border: none;
+               border-bottom: 2px solid transparent; font-weight: 600; }
+QTabBar::tab:hover { color: @text@; }
+QTabBar::tab:selected { color: @accent@; border-bottom: 2px solid @accent@; }
+QSplitter::handle { background-color: @border@; }
+QSplitter::handle:horizontal { width: 1px; }
+QSplitter::handle:vertical { height: 1px; }
+QSlider::groove:horizontal { height: 4px; background: @border@; border-radius: 2px; }
+QSlider::sub-page:horizontal { background: @accent@; border-radius: 2px; }
+QSlider::handle:horizontal { background: @text@; width: 14px; margin: -6px 0; border-radius: 7px; }
+QScrollBar:vertical { background: transparent; width: 10px; }
+QScrollBar::handle:vertical { background: @border@; border-radius: 5px; min-height: 24px; }
+QScrollBar:horizontal { background: transparent; height: 10px; }
+QScrollBar::handle:horizontal { background: @border@; border-radius: 5px; min-width: 24px; }
+QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+QScrollArea { border: none; }

@@ -3,29 +3,16 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from app.gui.main_window import MainWindow
-from app.gui.mock_services.services import MockAutomataService
+from app.gui.theme import load_fonts, load_stylesheet
+from app.services.simulation_service import SimulationService
 
-def _load_stylesheet(app: QApplication) -> None:
-    try:
-        with open("app/gui/styles/theme.qss", "r", encoding="utf-8") as f:
-            app.setStyleSheet(f.read())
-    except FileNotFoundError:
-        pass
 
 def main() -> None:
     app = QApplication(sys.argv)
-    _load_stylesheet(app)
-
-    if "--mock" in sys.argv:
-        from app.gui.mock_services.services import MockAutomataService
-        service = MockAutomataService()
-    else:
-        from app.services.simulation_service import SimulationService
-        service = SimulationService()
-
-    window = MainWindow(service)
+    load_fonts()
+    app.setStyleSheet(load_stylesheet())
+    window = MainWindow(SimulationService())
     window.show()
-
     sys.exit(app.exec())
 
 
