@@ -1,102 +1,95 @@
 # ORAL DEFENSE PLAYBOOK: LIVE DEMO SCRIPT & Q&A QUESTION BANK
-## Preparation Guide for September 29 & October 2, 2026 Academic Defense
 
 **Course:** CCAUTOMA — Formal Languages & Automata Theory  
-**Team Members:** Ken (Backend/Theory), Chester (Frontend/GUI), Integrator (System/QA)  
-**Total Presentation Window:** 8–10 Minutes (Presentation: 4 min | Live Demo: 4 min | Q&A: 2 min)
+**Team:** Ken (Backend/Theory), Chester (Frontend/GUI), Integrator (System/QA)  
+**Window:** 8–10 minutes (presentation ≈ 4 min · live demo ≈ 4 min · Q&A ≈ 2 min)
 
----
+Every statement below is backed by code or a test in this repository. If you change the code, re-run
+`python -m pytest` and `python scripts/gen_docs.py --check` before rehearsing.
 
-## 1. The 4-Minute Live Demonstration Choreography
+## Before you present
 
-The live demo must run like clockwork without awkward pauses or confusion over who speaks.
+- Start with `python -m app.main` from anywhere; window opens on **Simulate**.
+- Type inputs and press **Enter** (or **Load**). Loading never starts the run — you decide when to **Step**, **Play** or **Run all**.
+- Shortcuts: **Space** play/pause · **→** step · **←** previous step · **Ctrl+R** reset.
+- Pre-run once: Tests tab → all 28 pass; Theory → Equivalence → *Run exhaustive check* (takes about a second).
 
-```
-[0:00 - 1:00]  Ken: Introduces Problem, Formal Language, Alphabet Σ, and RE
-      ↓
-[1:00 - 2:00]  Chester: Demonstrates Page 1 (Validator) & Page 2 with Valid ID
-      ↓
-[2:00 - 3:00]  Chester + Ken: Demonstrates Invalid Symbol & Structural Failure (q_trap)
-      ↓
-[3:00 - 4:00]  Integrator: Demonstrates Page 4 (Batch Test Suite) & Concludes
-```
+## 1. The 4-minute live demonstration
 
----
+### Minute 1 — Theory overview (Ken) · Theory tab
+Show **Language**, then **Regular expression**, then click through **ε-NFA → Subset construction → Minimization**.
 
-### Step-by-Step Demo Script (Word-for-Word Guide)
+> "Our language is `EMP-YYYY-NNNN` over an alphabet of 14 symbols. Its regular expression is `EMP-D⁴-D⁴` with `D` the union of the ten digits.
+> We did not type an automaton. We built an **ε-NFA from the RE with Thompson's construction** — 26 states and 12 ε-edges. **Subset construction** turned it into a DFA with 14 live states plus an explicit dead state. **Partition refinement** minimized it: it takes 13 rounds and merges nothing, because every state needs a different number of further symbols to reach acceptance. That minimal DFA is what the simulator runs."
 
-#### Minute 1: Formal Theory Overview (Speaker: Ken)
-* **What to show on projector:** Slide showing the pipeline: $\text{RE} \rightarrow \text{NFA} \rightarrow \text{DFA} \rightarrow \text{Minimized DFA}$.
-* **Ken says:**
-  > *"Good morning, panel. Our project is an interactive formal language recognizer for an organization-defined Employee ID structure. Rather than treating validation as a superficial form check or regular expression search, we modeled the ID format as a formal language over an alphabet of 14 symbols: the prefix letters 'E', 'M', 'P', hyphens, and the decimal digits 0 through 9.*  
-  > *We formally defined the language, constructed its Regular Expression, built the recognizing NFA, applied subset construction to derive the DFA, and executed Hopcroft partition refinement to produce the canonical Minimized DFA containing exactly 14 recognition states and 1 trap state. Chester will now demonstrate how the software simulates this automaton."*
+### Minute 2 — Valid ID, step by step (Chester) · Simulate tab
+Type `EMP-2026-0042`, press Enter. Press **Step** four times, then **Run all**.
 
-#### Minute 2: Valid String & Step-by-Step Traversal (Speaker: Chester)
-* **What Chester does on screen:** Switches to **Page 2: DFA Simulator**. Enters `EMP-2026-0042`.
-* **Chester says:**
-  > *"Here on the DFA Simulator page, we enter the valid Employee ID `EMP-2026-0042`. When I click `Start`, the automaton initializes at start state $q_0$. Notice our ribbon highlight cursor pointing to the first character 'E'.*  
-  > *(Chester clicks `Next Step` 4 times)*  
-  > *As we step symbol-by-symbol, observe the transition table: 'E' transitions $q_0 \rightarrow q_1$, 'M' to $q_2$, 'P' to $q_3$, and the hyphen to $q_4$. The UI updates the current state badge in real time.*  
-  > *(Chester clicks `Run All`)*  
-  > *Fast-forwarding through the year and sequence digits, the string terminates at character 13 in state $q_{13}$. Because $q_{13}$ belongs to the accepting states set $F$, the application concludes with an emerald-green ACCEPTED result."*
+> "The tape shows the input; the automaton sits in its start state `q0`. Each step consumes one symbol: `E` takes `q0` to `q1`, `M` to `q2`, `P` to `q3`, `-` to `q4`. The coloured bars under the tape show which part of the regular expression each symbol matches. The amber edge is the transition just taken, tinted states were visited, unvisited states stay plain. Hover any state or edge and the strip under the diagram explains it — e.g. `q3` expects `-` and needs at least 10 more symbols. After 13 symbols we are in `q13`, which is in F: **ACCEPTED**."
 
-#### Minute 3: Invalid Symbol & Rejection Trapping (Speakers: Chester & Ken)
-* **What Chester does on screen:** Types `EMP-2026-12A4` into the simulator and clicks `Start`.
-* **Chester says:**
-  > *"Now we test a subtle error: `EMP-2026-12A4`, where character 'A' appears inside the numeric employee sequence."*  
-  > *(Chester clicks `Next Step` until reaching 'A')*
-* **Ken interjects to explain the theory:**
-  > *"At step 11, the automaton expects a numeric digit in $\{0\dots9\}$ transitioning from $q_{11}$ to $q_{12}$. However, symbol 'A' does not satisfy any valid forward transition. The Minimized DFA transitions immediately to the dead state $q_{\text{trap}}$. Once in $q_{\text{trap}}$, all subsequent symbols remain trapped, and the input is conclusively REJECTED with the exact failure position highlighted."*
+Optional (10 s): switch **Model** to *ε-NFA* and Step once: "after `E` the NFA is in `{n1, n2}` — that is the ε-closure at work."
 
-#### Minute 4: Batch Test Suite & Architecture Wrap-Up (Speaker: Integrator)
-* **What the Integrator does on screen:** Switches to **Page 4: Predefined Test Suite**. Clicks `[Run All Test Cases]`.
-* **Integrator says:**
-  > *"To ensure rigorous academic verification, we maintain an automated test suite of over 25 categorized test cases covering missing hyphens, wrong prefix capitalization, boundary years, short IDs, and trailing spaces.*  
-  > *With one click, our test runner evaluates the entire suite through the Minimized DFA engine. As you can see, all 25 test cases achieve 100% agreement with expected formal outcomes.*  
-  > *Architecturally, the PySide6 user interface contains zero automata algorithms—it strictly consumes structured dataclasses emitted by Ken's headless simulation service. Thank you, and we now welcome your questions."*
+### Minute 3 — Two kinds of rejection (Chester + Ken) · Simulate tab
+1. Type `EMP2026-0001`, Step to position 3.
+   > "All symbols are in Σ, so the automaton runs. In `q3` it expects `-` but reads `2`. There is no valid transition, so it enters the dead state `q_trap` — shown by the dashed red edge — and stays there. **REJECTED at position 3.**"
+2. Type `EMP-2026-12A4`.
+   > "`A` is not in Σ. Layer 1 checks the whole string against the alphabet *before* the automaton runs, so no state is visited: this is not a string over Σ at all. **REJECTED: 'A' at position 11.**"
 
----
+### Minute 4 — Verification and architecture (Integrator) · Tests tab, then Theory → Equivalence
+Tests tab:
 
-## 2. Defense Panel Question Bank & Scripted Answers
+> "28 categorized cases, 28 pass, and the ε-NFA, the pre-minimization DFA and the minimal DFA agree on all 28."
 
-### Questions for Ken (Backend & Automata Theory Lead)
+Theory → Equivalence → **Run exhaustive check**:
 
-#### Q1: "Why is an Employee ID language considered a Regular Language?"
-* **Ken's Answer:**  
-  *"It is a regular language because it can be generated by a regular expression of finite length, and recognized by a deterministic finite automaton with a finite number of states ($|Q| = 15$). Crucially, it does not require unbounded memory or a stack mechanism to match arbitrary pairs of symbols, which distinguishes it from context-free languages."*
+> "The minimal DFA equals the subset DFA by an exact product-automaton check over 15 state pairs. We also ran every word up to length 4 — 41,371 words — through the NFA and both DFAs against a Python regex oracle: 0 disagreements. The GUI contains no automata logic; it renders results from the services."
 
-#### Q2: "How did you perform DFA minimization, and why couldn't you reduce it further?"
-* **Ken's Answer:**  
-  *"We pruned unreachable states, created the initial partition $P_0 = \{F, Q \setminus F\}$, and iteratively refined partitions on all symbols in $\Sigma$. The DFA cannot be reduced below 15 states because every state $q_i$ requires a strictly different suffix length ($13 - i$) to reach acceptance. Since their distinguishing string lengths are all distinct, no two sequential states are equivalent."*
+## 2. Q&A bank
 
-#### Q3: "What happens mathematically when an empty string `\"\"` is input?"
-* **Ken's Answer:**  
-  *"The empty string $\epsilon$ evaluates whether the start state $q_0$ is accepting. Since $q_0 \notin F$, the empty string is rejected without any state transitions occurring. Our software catches this gracefully as `REJECTED_EMPTY_INPUT`."*
+### Ken (theory)
 
----
+**Q1. Why is this language regular?**  
+It is finite (10⁸ words, each of length 13). Every finite language is regular; concretely a DFA that counts 0…13 symbols recognizes it, so no stack or unbounded counter is needed.
 
-### Questions for Chester (Frontend & GUI Lead)
+**Q2. How did you convert the NFA to a DFA?**  
+Rabin–Scott subset construction (`app/core/nfa.py::subset_construction`). The start subset is the ε-closure of `n0`. For each subset and symbol we compute `move` then ε-closure; each new subset is a DFA state and the empty subset is the dead state. The Theory → *Subset construction* tab shows every step, e.g. after `E`: `move = {n1}`, closure `{n1, n2}`.
 
-#### Q4: "Where is the validation logic implemented in your GUI code?"
-* **Chester's Answer:**  
-  *"There is zero validation or automata logic in the GUI. In strict adherence to our decoupled architecture, the PySide6 widgets only capture user input and trigger events on `ValidationService` and `SimulationService`. The GUI receives immutable `SimulationResult` and `TransitionStep` objects and simply visualizes them."*
+**Q3. Is your NFA really nondeterministic?**  
+It has ε-transitions (12), so it is an ε-NFA. For this particular language the ε-closures are deterministic, so the subset DFA is a chain — a property of the language, not a shortcut in the code. The code handles real nondeterminism too (tested with an NFA that has two `a`-moves).
 
-#### Q5: "How does your simulator step through the ID without freezing the UI?"
-* **Chester's Answer:**  
-  *"We use a stateful stepping session pattern in `SimulationService`. Each click on `Next Step` queries a single step transition that executes in sub-millisecond time. The Qt event loop stays completely responsive, updating only the active ribbon pointer, table rows, and state badges."*
+**Q4. How did you minimize, and were any states merged?**  
+Partition refinement (Moore): start from {F, Q∖F}, split blocks whose members reach different blocks on some symbol, repeat. It stabilises after 13 rounds with 15 singleton blocks, so nothing merges. Each round isolates one more state, mirroring the fact that from `qᵢ` the shortest accepted word has length 13−i. Minimization is also tested on a redundant DFA where two pairs of states really merge.
 
----
+**Q5. Why couldn't the DFA be reduced further?**  
+From `qᵢ` you need exactly `13−i` more symbols to accept, so no two live states are equivalent; `q13` is the only accepting state; `q_trap` can never accept. The Minimization tab computes these numbers from the automaton.
 
-### Questions for the Integrator (System, QA & Architecture Lead)
+**Q6. Is δ total? Where is the trap state?**  
+Yes. Every (state, symbol) pair of Σ has an explicit next state; undefined moves go to `q_trap`, which loops on every symbol (shown in every empty table cell).
 
-#### Q6: "How did your team prevent merge conflicts and stay coordinated?"
-* **Integrator's Answer:**  
-  *"We enforced strict directory ownership: Ken owned `app/core/` and `app/services/`, Chester owned `app/gui/`, and I managed contracts, repository governance, and integration tests. On Day 1, we froze our shared data models (`SimulationResult`, `TransitionStep`) and I provided a mock backend service so Chester could build the entire GUI in parallel without waiting for Ken's core."*
+**Q7. What happens when the user types a symbol that is not in Σ?**  
+Layer 1 checks the whole string against Σ first. If any symbol is outside Σ the input is not a string over Σ, so the automaton does not run: REJECTED, with every offending symbol and position listed. δ is not defined for such symbols — `DFA.step` refuses them.
 
-#### Q7: "How do you know your Minimized DFA accepts the exact same language as your original NFA?"
-* **Integrator's Answer:**  
-  *"We wrote automated equivalence tests in `tests/core/test_minimization.py` and regression tests in `tests/integration/test_e2e_pipeline.py`. We tested the same 25+ categorized inputs against both representations and verified that the accepted and rejected string sets were 100% identical."*
+**Q8. What about the empty string?**  
+ε is not in L because `q0 ∉ F`. The application reports "Please enter an Employee ID" and does not simulate.
 
-#### Q8: "Why didn't you just use Python's built-in `re` module?"
-* **Integrator's Answer:**  
-  *"While `re.match()` can tell you if a string matches a pattern, it acts as a black box. The academic objective of this course is to expose the internal finite state machine—showing the alphabet $\Sigma$, states $Q$, deterministic transitions $\delta$, and step-by-step state history. Our software proves that real-world regex engines are compiled into finite automata under the hood."*
+### Chester (GUI)
+
+**Q9. Where is the validation logic in the GUI?**  
+Nowhere. The widgets call `SimulationService` and render `SimulationResult` / `TransitionStep`. The diagram is drawn from the automaton objects themselves (`app/core/present.py` builds the graph).
+
+**Q10. Can the GUI and the validator disagree?**  
+No: one engine (`app.core.simulator.Run`) powers both the animated session and the one-shot result, and tests check step-by-step ≡ one-shot for all three models over the whole suite. The GUI also never trims input, so `"EMP-2026-0001 "` (trailing space) is rejected.
+
+### Integrator (QA / architecture)
+
+**Q11. How do you know the minimized DFA accepts exactly the same language?**  
+Exact proof: BFS over the product automaton finds no reachable pair where exactly one side accepts (15 pairs explored). We verified the check itself by mutation — flipping any one transition yields a counterexample. In addition: exhaustive comparison of all words ≤ 4, neighbours of valid IDs, and 20,000 random words including Unicode look-alikes against a regex oracle.
+
+**Q12. Why not just use Python's `re`?**  
+`re` is a black box. The goal is to expose Σ, Q, δ, q₀, F and the state-by-state run, and to derive each machine from the previous one. We use `re.fullmatch` only as an independent oracle in tests.
+
+**Q13. Why is the RE written as `EMP-D⁴-D⁴` and not `[0-9]{4}`?**  
+The course's regular expressions use union, concatenation and repetition. `D` is the union of ten digits; `{4}` is repetition. The PCRE form is kept as a test oracle only (and used with `fullmatch`, because `$` would accept a trailing newline).
+
+**Q14. Why is the digit class one atom in the Thompson NFA?**  
+A textbook union `(0∪…∪9)` needs ten branches per digit (~170 states). We collapse each digit class into one atom with ten parallel edges — the standard character-class shortcut — which keeps the NFA at 26 states without changing the language.

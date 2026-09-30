@@ -1,3 +1,5 @@
+> **Historical planning document.** It describes the original three-person plan (including a mock backend and a hand-written DFA). The implementation has moved on — see `docs/architecture.md` and the code.
+
 # DEVELOPER PLAYBOOK — INTEGRATOR & TECHNICAL LEAD
 ## Repository Governance, Git Merging, Integration QA, and Defense Guide
 

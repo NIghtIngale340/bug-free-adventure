@@ -109,12 +109,8 @@ ruff check --fix .
 
 ## 4. How to Run the Application
 
-Once wired together by the Integrator:
-
 ```bash
-# Run the full integrated application
-python -m app.main
-
-# Run in mock mode (for fast UI testing without backend core)
-python -m app.main --mock
+python -m app.main            # from the project root (any working directory works)
+python -m pytest              # unit + GUI (offscreen) tests
+python scripts/gen_docs.py --check   # docs tables up to date?
 ```

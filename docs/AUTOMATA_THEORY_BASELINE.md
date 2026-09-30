@@ -1,5 +1,7 @@
 # AUTOMATA THEORY BASELINE & CANONICAL SPECIFICATION
-## Single Source of Truth: Mathematical Models, State Names, and Delta Function
+## Reference Specification: Mathematical Models, State Names, and Delta Function
+
+> **Status:** this document is the *reference* the derived automaton is checked against. The simulator no longer runs a hand-written table: the minimal DFA is derived from the regular expression (`app/core/pipeline.py`) and `tests/core/test_equivalence.py` proves it identical to the table below. Minimization takes 13 refinement rounds and merges nothing.
 
 **Audience:** All Team Members (Ken, Chester, Integrator)  
 **Purpose:** Eliminates any ambiguity regarding state names, alphabet symbols, transition functions, and trap states.
@@ -89,38 +91,7 @@ During the defense, professors often ask:
 
 ---
 
-## 5. Ready-to-Use Python Dictionary Representation
+## 5. Where the reference table lives in code
 
-Ken can directly embed this clean transition map into `app/data/id_rules.py` or `app/core/dfa.py`:
-
-```python
-"""
-CANONICAL TRANSITION TABLE MAPPING
-Owner: Ken / Integrator
-"""
-
-DIGITS = [str(d) for d in range(10)]  # '0' through '9'
-
-CANONICAL_TRANSITIONS = {
-    "q0": {"E": "q1"},
-    "q1": {"M": "q2"},
-    "q2": {"P": "q3"},
-    "q3": {"-": "q4"},
-    "q4": {d: "q5" for d in DIGITS},
-    "q5": {d: "q6" for d in DIGITS},
-    "q6": {d: "q7" for d in DIGITS},
-    "q7": {d: "q8" for d in DIGITS},
-    "q8": {"-": "q9"},
-    "q9": {d: "q10" for d in DIGITS},
-    "q10": {d: "q11" for d in DIGITS},
-    "q11": {d: "q12" for d in DIGITS},
-    "q12": {d: "q13" for d in DIGITS},
-    "q13": {},  # Any trailing character traps to q_trap
-    "q_trap": {},
-}
-
-START_STATE = "q0"
-ACCEPTING_STATES = {"q13"}
-TRAP_STATE = "q_trap"
-ALPHABET = {"E", "M", "P", "-", *DIGITS}
-```
+`app/data/id_rules.py::REFERENCE_TRANSITIONS` holds this table verbatim. It is used only by tests and by the
+Theory → Equivalence tab to cross-check the derived DFA; it is never executed by the simulator.

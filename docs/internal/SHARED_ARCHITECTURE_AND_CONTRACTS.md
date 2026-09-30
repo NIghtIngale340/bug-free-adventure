@@ -1,3 +1,5 @@
+> **Historical planning document.** It describes the original three-person plan (including a mock backend and a hand-written DFA). The implementation has moved on — see `docs/architecture.md` and the code.
+
 # SHARED ARCHITECTURE, CONTRACTS & TEAM RULES
 ## Employee ID Validator (Automata Theory Project — CCAUTOMA 2026)
 
@@ -192,6 +194,6 @@ class ISimulationService(ABC):
 
 | Role | Guide File | Primary Focus |
 | :--- | :--- | :--- |
-| **Ken (Backend Lead)** | [docs/KEN_BACKEND_GUIDE.md](file:///home/nightingale/Desktop/Automata_WTF/docs/KEN_BACKEND_GUIDE.md) | Core Automata, Minimizer, Simulator, Services, pytest |
-| **Chester (Frontend Lead)** | [docs/CHESTER_FRONTEND_GUIDE.md](file:///home/nightingale/Desktop/Automata_WTF/docs/CHESTER_FRONTEND_GUIDE.md) | PySide6 Shell, 4 GUI Pages, Custom Widgets, Mock Service |
-| **Integrator (Merger / QA)** | [docs/INTEGRATOR_GUIDE.md](file:///home/nightingale/Desktop/Automata_WTF/docs/INTEGRATOR_GUIDE.md) | Git Branching, PR Reviews, Merging, E2E QA, Defense Flow |
+| **Ken (Backend Lead)** | [docs/KEN_BACKEND_GUIDE.md](KEN_BACKEND_GUIDE.md) | Core Automata, Minimizer, Simulator, Services, pytest |
+| **Chester (Frontend Lead)** | [docs/CHESTER_FRONTEND_GUIDE.md](CHESTER_FRONTEND_GUIDE.md) | PySide6 Shell, 4 GUI Pages, Custom Widgets, Mock Service |
+| **Integrator (Merger / QA)** | [docs/INTEGRATOR_GUIDE.md](INTEGRATOR_GUIDE.md) | Git Branching, PR Reviews, Merging, E2E QA, Defense Flow |
