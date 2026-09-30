@@ -4,9 +4,10 @@ Verifies all 28 categorized test cases against the real Minimized DFA simulator.
 """
 
 import pytest
+
 from app.data.test_cases import MASTER_TEST_SUITE, TestCase
-from app.services.validation_service import ValidationService
 from app.services.simulation_service import SimulationService
+from app.services.validation_service import ValidationService
 
 
 @pytest.fixture

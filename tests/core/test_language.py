@@ -61,3 +61,9 @@ def test_describe_language_contains_core_facts() -> None:
     assert info["total_length"] == 13
     assert info["alphabet_size"] == 14
     assert "E" in info["alphabet"] and "9" in info["alphabet"]
+
+def test_describe_symbols_wording() -> None:
+    from app.core.language import describe_symbols
+    assert describe_symbols(list("0123456789")) == "a digit 0–9"
+    assert describe_symbols(["-"]) == "'-'"
+    assert describe_symbols([]) == "end of input"
