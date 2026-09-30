@@ -1,12 +1,10 @@
 """Documentation must match the code: embedded tables are generated, assets exist."""
 
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
+from scripts import gen_docs
 
-import gen_docs  # noqa: E402
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_generated_doc_tables_are_current() -> None:
