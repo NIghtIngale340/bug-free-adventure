@@ -1,62 +1,72 @@
 """
-CANONICAL ID RULES, ALPHABET, AND MINIMIZED DFA TRANSITION TABLE
-Owner: Ken (Backend / Automata Core Lead)
+EMPLOYEE-ID LANGUAGE DEFINITION
 
-Single source of truth for the Employee ID formal language.
+Single source of truth:  ID_REGEX  (a formal regular expression).
+Sigma, the NFA, the DFA and the minimal DFA are all *derived* from it in
+app/core/pipeline.py; nothing below is executed by the simulator except ID_REGEX.
 
-Language: L = { w in Sigma* | w = EMP-YYYY-NNNN }
-  - Prefix: 'EMP'
-  - Separator 1: '-'
-  - Year: 4 digits [0-9]
-  - Separator 2: '-'
-  - Sequence: 4 digits [0-9]
-  - Total length: exactly 13 characters
-
-Alphabet (|Sigma| = 14):
-  Sigma = {'E', 'M', 'P', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+    L = { w in Sigma* | w = EMP-YYYY-NNNN },  D = (0 ∪ 1 ∪ ... ∪ 9)
+    RE = E·M·P·-·D·D·D·D·-·D·D·D·D   =   EMP-D⁴-D⁴
+    |w| = 13 for every w in L,  |L| = 10^8  (a finite, hence regular, language)
 """
 
+from dataclasses import dataclass
 
-# --- Alphabet ---------------------------------------------------------------
+from app.core.regex import Class, Concat, Lit, Repeat, alphabet_of, formal, length_of
 
 DIGITS: list[str] = [str(d) for d in range(10)]  # '0' .. '9'
 
-ALPHABET: frozenset[str] = frozenset({"E", "M", "P", "-", *DIGITS})
+DIGIT = Class(tuple(DIGITS), name="D")
+# The RE as named parts (the names only label the tape and the docs; the RE is the concatenation).
+_PARTS = (
+    ("prefix", Concat((Lit("E"), Lit("M"), Lit("P")))),
+    ("separator", Lit("-")),
+    ("year YYYY", Repeat(DIGIT, 4)),      # any four digits (syntactic check only, no year range)
+    ("separator", Lit("-")),
+    ("number NNNN", Repeat(DIGIT, 4)),
+)
+ID_REGEX = Concat(tuple(node for _, node in _PARTS))
 
-# --- Language structure -----------------------------------------------------
 
-PREFIX: str = "EMP"
-TOTAL_LENGTH: int = 13
+@dataclass(frozen=True)
+class Segment:
+    """Positions [start, end) of an input that one part of the RE matches."""
+    name: str
+    formal: str
+    start: int
+    end: int
 
-# Regular expression (documentation + metadata, NOT used for acceptance).
-# Per team Rule 1, the Minimized DFA is the only source of truth.
-RE_PATTERN: str = r"^EMP-[0-9]{4}-[0-9]{4}$"
 
-# --- Canonical Minimized DFA (Q, Sigma, delta, q0, F) ----------------------
+def _segments() -> tuple[Segment, ...]:
+    out, pos = [], 0
+    for name, node in _PARTS:
+        out.append(Segment(name, formal(node), pos, pos + length_of(node)))
+        pos += length_of(node)
+    return tuple(out)
 
-START_STATE: str = "q0"
+
+ID_SEGMENTS: tuple[Segment, ...] = _segments()
+
+ALPHABET: frozenset[str] = frozenset(alphabet_of(ID_REGEX))
+TOTAL_LENGTH: int = length_of(ID_REGEX)
+
+# Same language in PCRE shorthand. Documentation and TEST ORACLE ONLY (use re.fullmatch:
+# '^...$' would wrongly accept a trailing newline). Never used for acceptance.
+RE_PATTERN: str = r"EMP-[0-9]{4}-[0-9]{4}"
+
+# Naming convention for the derived minimal DFA.
 TRAP_STATE: str = "q_trap"
-ACCEPTING_STATES: frozenset[str] = frozenset({"q13"})
 
-CANONICAL_STATES: list[str] = [
-    "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7",
-    "q8", "q9", "q10", "q11", "q12", "q13", TRAP_STATE,
-]
-
-CANONICAL_TRANSITIONS: dict[str, dict[str, str]] = {
-    "q0":  {"E": "q1"},
-    "q1":  {"M": "q2"},
-    "q2":  {"P": "q3"},
-    "q3":  {"-": "q4"},
-    "q4":  {d: "q5"  for d in DIGITS},
-    "q5":  {d: "q6"  for d in DIGITS},
-    "q6":  {d: "q7"  for d in DIGITS},
-    "q7":  {d: "q8"  for d in DIGITS},
-    "q8":  {"-": "q9"},
-    "q9":  {d: "q10" for d in DIGITS},
-    "q10": {d: "q11" for d in DIGITS},
-    "q11": {d: "q12" for d in DIGITS},
-    "q12": {d: "q13" for d in DIGITS},
-    "q13": {},
-    TRAP_STATE: {},
+# --- Hand-written reference automaton --------------------------------------
+# Used ONLY by tests / the Equivalence tab to cross-check the derived minimal DFA.
+# The simulator never reads it.
+REFERENCE_START = "q0"
+REFERENCE_ACCEPTING = frozenset({"q13"})
+REFERENCE_STATES: list[str] = [f"q{i}" for i in range(14)] + [TRAP_STATE]
+REFERENCE_TRANSITIONS: dict[str, dict[str, str]] = {
+    "q0": {"E": "q1"}, "q1": {"M": "q2"}, "q2": {"P": "q3"}, "q3": {"-": "q4"},
+    **{f"q{i}": {d: f"q{i + 1}" for d in DIGITS} for i in (4, 5, 6, 7)},
+    "q8": {"-": "q9"},
+    **{f"q{i}": {d: f"q{i + 1}" for d in DIGITS} for i in (9, 10, 11, 12)},
+    "q13": {}, TRAP_STATE: {},
 }

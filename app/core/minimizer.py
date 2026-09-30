@@ -1,174 +1,94 @@
 """
-DFA MINIMIZATION (HOPCROFT PARTITION REFINEMENT)
-Owner: Ken (Backend / Automata Core Lead)
-Task: BE-004
+DFA MINIMIZATION (Moore partition refinement)
 
-Minimizes a DFA by:
-  1. Removing unreachable states.
-  2. Partition refinement (Hopcroft / Moore) until stable.
-  3. Merging equivalent states.
-  4. Recording a trace for the academic defense.
+  1. remove states unreachable from q0
+  2. P0 = { F, Q \\ F }
+  3. split every block whose members disagree, for some symbol, on the block of their
+     successor; repeat until no block splits (each pass is recorded as a "round")
+  4. merge each final block into one state; rename by BFS order q0, q1, ... (dead block q_trap)
 
-For the Employee ID language, the canonical DFA is ALREADY minimal
-(see AUTOMATA_THEORY_BASELINE.md section 4). This module still performs
-the full algorithm so the minimization step of the pipeline is
-demonstrated in code and can be pointed to during the defense.
+Moore's algorithm (O(n^2 |Sigma|)) is used, not Hopcroft's worklist variant (O(n log n));
+both compute the same partition and n = 15 here.
 """
 
+from collections import deque
+from dataclasses import dataclass
 
-from app.core.dfa import DFA
+from app.core.dfa import DFA, natural_key
 
 
-def _reachable_states(dfa: DFA) -> set[str]:
-    """Return the set of states reachable from the start state.
+@dataclass(frozen=True)
+class MinimizationResult:
+    dfa: DFA
+    removed_unreachable: tuple[str, ...]
+    rounds: tuple[tuple[tuple[str, ...], ...], ...]   # rounds[k] = partition P_k (original names)
+    state_map: dict[str, str]                         # original state -> minimized state
+    merged_groups: tuple[tuple[str, ...], ...]        # blocks with more than one member
+    states_before: int
+    states_after: int
 
-    Note: q_trap is reachable *implicitly* from any state that is missing
-    an explicit transition on some symbol in Sigma. Since the canonical
-    DFA has empty rows for q13 and q_trap, we always include the trap
-    state in the reachable set if it exists in the state list.
-    """
-    seen: set[str] = set()
-    stack: list[str] = [dfa.start_state]
-    while stack:
-        s = stack.pop()
-        if s in seen:
-            continue
-        seen.add(s)
-        for nxt in dfa.transitions.get(s, {}).values():
+
+def _reachable(dfa: DFA) -> list[str]:
+    seen, queue = [dfa.start_state], deque([dfa.start_state])
+    while queue:
+        for nxt in dfa.transitions[queue.popleft()].values():
             if nxt not in seen:
-                stack.append(nxt)
-    if dfa.trap_state in dfa.states:
-        seen.add(dfa.trap_state)
+                seen.append(nxt)
+                queue.append(nxt)
     return seen
 
 
-def _prune_unreachable(dfa: DFA) -> tuple[DFA, list[str]]:
-    """Return a new DFA with only reachable states, plus the removed list."""
-    reachable = _reachable_states(dfa)
-    removed = [s for s in dfa.states if s not in reachable]
-    pruned = DFA(
-        states=[s for s in dfa.states if s in reachable],
-        transitions={s: dict(dfa.transitions.get(s, {})) for s in reachable},
-        start_state=dfa.start_state,
-        accepting_states=set(dfa.accepting_states) & reachable,
-        trap_state=dfa.trap_state,
-    )
-    return pruned, removed
+def _partition(block_of: dict[str, int]) -> tuple[tuple[str, ...], ...]:
+    blocks: dict[int, list[str]] = {}
+    for s, b in block_of.items():
+        blocks.setdefault(b, []).append(s)
+    return tuple(sorted((tuple(sorted(m, key=natural_key)) for m in blocks.values()),
+                        key=lambda m: natural_key(m[0])))
 
 
-def _partition_refinement(dfa: DFA) -> list[set[str]]:
-    """
-    Refine partitions until stable.
+def minimize(dfa: DFA, prefix: str = "q", dead_name: str = "q_trap") -> MinimizationResult:
+    reachable = set(_reachable(dfa))
+    removed = tuple(s for s in dfa.states if s not in reachable)
+    states = [s for s in dfa.states if s in reachable]
+    sigma = sorted(dfa.alphabet)
 
-    Returns the final list of equivalence classes (each a set of states).
-    """
-    # Step 1: initial partition -> {accepting} vs {non-accepting}
-    accepting = {s for s in dfa.states if s in dfa.accepting_states}
-    non_accepting = {s for s in dfa.states if s not in dfa.accepting_states}
-    partitions: list[set[str]] = [p for p in (accepting, non_accepting) if p]
+    block_of = {s: 0 if dfa.is_accepting(s) else 1 for s in states}
+    rounds = [_partition(block_of)]
+    while True:
+        ids: dict[tuple, int] = {}
+        refined = {
+            s: ids.setdefault((block_of[s], *(block_of[dfa.step(s, a)] for a in sigma)), len(ids))
+            for s in states
+        }
+        if len(ids) == len(set(block_of.values())):
+            break
+        block_of = refined
+        rounds.append(_partition(block_of))
 
-    # Collect every symbol that appears anywhere in the transition table.
-    symbols: set[str] = set()
-    for row in dfa.transitions.values():
-        symbols |= set(row.keys())
+    # Name blocks: BFS from the start block over sorted symbols; dead blocks -> dead_name.
+    rep = {b: next(s for s in states if block_of[s] == b) for b in set(block_of.values())}
+    dead_blocks = {b for b, s in rep.items() if dfa.is_dead(s)}
+    order, queue = [block_of[dfa.start_state]], deque([block_of[dfa.start_state]])
+    while queue:
+        for a in sigma:
+            b = block_of[dfa.step(rep[queue[0]], a)]
+            if b not in order and b not in dead_blocks:
+                order.append(b)
+                queue.append(b)
+        queue.popleft()
+    names = {b: f"{prefix}{i}" for i, b in enumerate(order)}
+    names.update({b: dead_name if len(dead_blocks) == 1 else f"{dead_name}{i}"
+                  for i, b in enumerate(sorted(dead_blocks))})
 
-    changed = True
-    while changed:
-        changed = False
-        new_partitions: list[set[str]] = []
-        for block in partitions:
-            # Group states inside this block by their signature.
-            signature_map: dict[tuple[str, ...], set[str]] = {}
-            for state in block:
-                sig: list[str] = []
-                for sym in sorted(symbols):
-                    nxt = dfa.transitions.get(state, {}).get(sym, dfa.trap_state)
-                    # Which partition index does `nxt` currently live in?
-                    idx = -1
-                    for i, part in enumerate(partitions):
-                        if nxt in part:
-                            idx = i
-                            break
-                    sig.append(str(idx))
-                key = tuple(sig)
-                signature_map.setdefault(key, set()).add(state)
-
-            if len(signature_map) > 1:
-                changed = True
-            new_partitions.extend(signature_map.values())
-        partitions = new_partitions
-
-    return partitions
-
-
-def minimize(dfa: DFA) -> tuple[DFA, dict[str, object]]:
-    """
-    Minimize `dfa`.
-
-    Returns:
-        (minimized_dfa, metadata)
-
-        metadata contains:
-            - "removed_unreachable": list of states pruned
-            - "partitions": final partition list (each a set of states)
-            - "state_count_before": int
-            - "state_count_after": int
-            - "merged_groups": list of sets of merged states
-    """
-    pruned, removed = _prune_unreachable(dfa)
-    partitions = _partition_refinement(pruned)
-
-    # Name each partition block by a canonical state name.
-    # If a block contains exactly one original state, keep that name.
-    # Otherwise, generate a new name like "M0", "M1", ...
-    block_names: dict[int, str] = {}
-    counter = 0
-    merged_groups: list[set[str]] = []
-    for i, block in enumerate(partitions):
-        if len(block) == 1:
-            block_names[i] = next(iter(block))
-        else:
-            block_names[i] = f"M{counter}"
-            counter += 1
-            merged_groups.append(block)
-
-    def block_index(state: str) -> int:
-        for i, block in enumerate(partitions):
-            if state in block:
-                return i
-        return -1
-
-    # Build the minimized transition table.
-    min_transitions: dict[str, dict[str, str]] = {}
-    for block in partitions:
-        new_name = block_names[block_index(next(iter(block)))]
-        row: dict[str, str] = {}
-        sample = next(iter(block))
-        for sym, nxt in pruned.transitions.get(sample, {}).items():
-            row[sym] = block_names[block_index(nxt)]
-        min_transitions[new_name] = row
-
-    min_states = list(min_transitions.keys())
-    min_start = block_names[block_index(pruned.start_state)]
-    min_accepting = {
-        block_names[block_index(s)]
-        for s in pruned.accepting_states
+    min_states = [names[b] for b in order if b not in dead_blocks] + [names[b] for b in sorted(dead_blocks)]
+    transitions = {
+        names[b]: {a: names[block_of[dfa.step(rep[b], a)]] for a in sigma}
+        for b in list(order) + sorted(dead_blocks)
     }
-    min_trap = block_names[block_index(pruned.trap_state)]
+    accepting = {names[block_of[s]] for s in states if dfa.is_accepting(s)}
+    minimized = DFA(min_states, sigma, transitions, names[block_of[dfa.start_state]], accepting)
 
-    minimized = DFA(
-        states=min_states,
-        transitions=min_transitions,
-        start_state=min_start,
-        accepting_states=min_accepting,
-        trap_state=min_trap,
-    )
-
-    metadata: dict[str, object] = {
-        "removed_unreachable": removed,
-        "partitions": [set(p) for p in partitions],
-        "state_count_before": len(dfa.states),
-        "state_count_after": len(min_states),
-        "merged_groups": merged_groups,
-    }
-    return minimized, metadata
+    state_map = {s: names[block_of[s]] for s in states}
+    merged = tuple(m for m in rounds[-1] if len(m) > 1)
+    return MinimizationResult(minimized, removed, tuple(rounds), state_map, merged,
+                              len(dfa.states), len(min_states))

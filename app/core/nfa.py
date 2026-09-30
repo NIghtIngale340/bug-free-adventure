@@ -1,44 +1,27 @@
 """
-NON-DETERMINISTIC FINITE AUTOMATON + SUBSET CONSTRUCTION
-Owner: Ken (Backend / Automata Core Lead)
-Task: BE-003
+NFA WITH EPSILON TRANSITIONS, THOMPSON CONSTRUCTION AND SUBSET CONSTRUCTION
 
-For the Employee ID language, the NFA is structurally identical to the
-DFA because the language is a straight-line concatenation with no
-branching. We still model it explicitly so the pipeline
-RE -> NFA -> DFA -> Minimized DFA is visible in the code and in the
-written documentation.
+    RE  --thompson()-->  epsilon-NFA  --subset_construction()-->  DFA  --minimize()--> min DFA
 
-Subset construction is implemented generally, so if the NFA is later
-extended with epsilon transitions or multiple moves, the conversion
-still works.
+The NFA is *built from the regular expression* (app/core/regex.py). Concatenation is joined
+with epsilon edges, so epsilon-closure is exercised for real. A missing NFA transition means
+the empty set (an NFA has no trap state); the dead state only appears when subset construction
+completes the DFA.
 """
 
+import itertools
 from collections import deque
+from collections.abc import Iterable
+from dataclasses import dataclass
 
-from app.core.dfa import DFA
-from app.core.language import is_symbol_in_alphabet
-from app.core.models import (
-    SimulationResult,
-    SimulationStatus,
-    TransitionStep,
-)
-from app.data.id_rules import (
-    ACCEPTING_STATES,
-    CANONICAL_STATES,
-    CANONICAL_TRANSITIONS,
-    START_STATE,
-)
+from app.core.dfa import DFA, dist_to_accept, natural_key
+from app.core.regex import Class, Concat, Lit, Node, Repeat
 
 
 class NFA:
     """
-    NFA with explicit epsilon transitions.
-
-    delta is stored as:
-        { state: { symbol: {next_states...} } }
-    and epsilon transitions as:
-        { state: {next_states...} }
+    delta:   {state: {symbol: {next_states}}}
+    epsilon: {state: {next_states}}
     """
 
     def __init__(
@@ -46,242 +29,178 @@ class NFA:
         states: list[str],
         transitions: dict[str, dict[str, set[str]]],
         start_state: str,
-        accepting_states: set[str],
+        accepting_states: Iterable[str],
         epsilon: dict[str, set[str]] | None = None,
     ) -> None:
-        self.states = states
-        self.transitions = transitions
+        self.states = list(states)
+        self.transitions = {s: {a: set(t) for a, t in transitions.get(s, {}).items()} for s in states}
+        self.epsilon = {s: set((epsilon or {}).get(s, ())) for s in states}
         self.start_state = start_state
-        self.accepting_states = set(accepting_states)
-        self.epsilon = epsilon or {s: set() for s in states}
+        self.accepting_states = frozenset(accepting_states)
+        self.alphabet: frozenset[str] = frozenset(a for row in self.transitions.values() for a in row)
+        self._dist = dist_to_accept(
+            self.states,
+            [(u, v, 1) for u, row in self.transitions.items() for ts in row.values() for v in ts]
+            + [(u, v, 0) for u, ts in self.epsilon.items() for v in ts],
+            self.accepting_states,
+        )
+
+    # --- Core operations ----------------------------------------------------
+
+    def start_closure(self) -> frozenset[str]:
+        return epsilon_closure(self, {self.start_state})
+
+    def step(self, subset: Iterable[str], symbol: str) -> frozenset[str]:
+        """epsilon-closure(move(subset, symbol))."""
+        return epsilon_closure(self, move(self, subset, symbol))
+
+    def accepts(self, word: str) -> bool:
+        current = self.start_closure()
+        for symbol in word:
+            current = self.step(current, symbol)
+            if not current:
+                return False
+        return bool(current & self.accepting_states)
+
+    # --- Inspection ---------------------------------------------------------
+
+    def expected(self, subset: Iterable[str]) -> list[str]:
+        """Symbols that have a move from at least one state of `subset`."""
+        return sorted({a for s in subset for a, t in self.transitions[s].items() if t})
+
+    def symbols_needed(self, subset: Iterable[str]) -> int | None:
+        ds = [self._dist[s] for s in subset if s in self._dist]
+        return min(ds) if ds else None
+
+    @property
+    def epsilon_edge_count(self) -> int:
+        return sum(len(t) for t in self.epsilon.values())
 
 
-def canonical_nfa() -> NFA:
-    """
-    Build the canonical NFA for EMP-YYYY-NNNN.
-
-    Because the language is a pure concatenation, the NFA has exactly
-    one move per (state, symbol) pair, making subset construction a
-    trivial 1-to-1 mapping. This is documented in docs/nfa.md.
-    """
-    transitions: dict[str, dict[str, set[str]]] = {s: {} for s in CANONICAL_STATES}
-    for state, row in CANONICAL_TRANSITIONS.items():
-        for symbol, nxt in row.items():
-            transitions.setdefault(state, {}).setdefault(symbol, set()).add(nxt)
-    return NFA(
-        states=list(CANONICAL_STATES),
-        transitions=transitions,
-        start_state=START_STATE,
-        accepting_states=set(ACCEPTING_STATES),
-    )
-
-
-def epsilon_closure(nfa: NFA, states: set[str]) -> set[str]:
-    """Return the epsilon closure of `states`."""
-    stack = list(states)
+def epsilon_closure(nfa: NFA, states: Iterable[str]) -> frozenset[str]:
     closure = set(states)
+    stack = list(closure)
     while stack:
-        s = stack.pop()
-        for nxt in nfa.epsilon.get(s, set()):
+        for nxt in nfa.epsilon.get(stack.pop(), ()):
             if nxt not in closure:
                 closure.add(nxt)
                 stack.append(nxt)
-    return closure
+    return frozenset(closure)
 
 
-def move(nfa: NFA, states: set[str], symbol: str) -> set[str]:
-    """Return the set of NFA states reachable from `states` on `symbol`."""
-    result: set[str] = set()
-    for s in states:
-        result |= nfa.transitions.get(s, {}).get(symbol, set())
-    return result
+def move(nfa: NFA, states: Iterable[str], symbol: str) -> frozenset[str]:
+    return frozenset(t for s in states for t in nfa.transitions[s].get(symbol, ()))
 
 
-def subset_construction(nfa: NFA) -> tuple[DFA, list[tuple[str, set[str]]]]:
+# --- Thompson construction ----------------------------------------------------
+
+
+def thompson(node: Node) -> NFA:
     """
-    Convert an NFA to a DFA via the subset construction algorithm.
-
-    Returns:
-        (dfa, trace)
-        where `trace` lists every DFA state created and the NFA subset
-        it represents. This trace is used in docs/dfa.md for the defense.
+    Build an epsilon-NFA from the RE. Every atom (Lit or Class) becomes two states joined by
+    its symbol(s); concatenation joins consecutive fragments with an epsilon edge.
+    A Class is Thompson's union (0 ∪ 1 ∪ ... ∪ 9) collapsed into one atom with one edge per
+    symbol (the standard character-class shortcut, avoiding 10 parallel branches per digit).
     """
-    start = frozenset(epsilon_closure(nfa, {nfa.start_state}))
-    dfa_states: dict[frozenset, str] = {start: "D0"}
-    dfa_transitions: dict[str, dict[str, str]] = {"D0": {}}
-    trace: list[tuple[str, set[str]]] = [("D0", set(start))]
+    counter = itertools.count()
+    trans: dict[str, dict[str, set[str]]] = {}
+    eps: dict[str, set[str]] = {}
 
+    def new() -> str:
+        s = f"n{next(counter)}"
+        trans[s], eps[s] = {}, set()
+        return s
+
+    def build(n: Node) -> tuple[str, str]:
+        match n:
+            case Lit(c):
+                s, e = new(), new()
+                trans[s][c] = {e}
+                return s, e
+            case Class(chars):
+                s, e = new(), new()
+                for c in chars:
+                    trans[s][c] = {e}
+                return s, e
+            case Repeat(inner, k):
+                return build(Concat((inner,) * k))
+            case Concat(parts):
+                frags = [build(p) for p in parts]
+                for (_, end), (start, _) in zip(frags, frags[1:]):
+                    eps[end].add(start)
+                return frags[0][0], frags[-1][1]
+
+    start, end = build(node)
+    return NFA(list(trans), trans, start, {end}, eps)
+
+
+# --- Subset construction ------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SubsetMove:
+    """One row of the conversion: symbols with the same outcome are grouped."""
+    symbols: tuple[str, ...]
+    move: frozenset[str]          # move(subset, a)
+    closure: frozenset[str]       # epsilon-closure(move(subset, a))
+    target: str                   # DFA state name ("D_trap" for the empty set)
+
+
+@dataclass(frozen=True)
+class SubsetStep:
+    name: str
+    subset: frozenset[str]
+    accepting: bool
+    moves: tuple[SubsetMove, ...]
+
+
+DEAD_NAME = "D_trap"
+
+
+def subset_construction(nfa: NFA) -> tuple[DFA, list[SubsetStep]]:
+    """
+    Rabin-Scott subset construction. Returns the COMPLETE DFA (the empty subset becomes an
+    explicit dead state D_trap) and a step log with move / epsilon-closure per symbol group.
+    """
+    sigma = sorted(nfa.alphabet)
+    start = nfa.start_closure()
+    names: dict[frozenset[str], str] = {start: "D0"}
     queue = deque([start])
-    counter = 1
+    steps: list[SubsetStep] = []
+    transitions: dict[str, dict[str, str]] = {}
+    dead_needed = False
 
     while queue:
         current = queue.popleft()
-        current_name = dfa_states[current]
+        groups: dict[tuple[frozenset[str], frozenset[str]], list[str]] = {}
+        for a in sigma:
+            mv = move(nfa, current, a)
+            groups.setdefault((mv, epsilon_closure(nfa, mv)), []).append(a)
 
-        # Gather every symbol that appears in any NFA state of `current`.
-        symbols: set[str] = set()
-        for s in current:
-            symbols |= set(nfa.transitions.get(s, {}).keys())
+        moves, row = [], {}
+        for (mv, clo), symbols in groups.items():
+            if clo:
+                if clo not in names:
+                    names[clo] = f"D{len(names)}"
+                    queue.append(clo)
+                target = names[clo]
+            else:
+                target, dead_needed = DEAD_NAME, True
+            moves.append(SubsetMove(tuple(symbols), mv, clo, target))
+            row.update({a: target for a in symbols})
+        transitions[names[current]] = row
+        steps.append(SubsetStep(
+            names[current], current, bool(current & nfa.accepting_states),
+            tuple(sorted(moves, key=lambda m: m.symbols)),
+        ))
 
-        for symbol in sorted(symbols):
-            nxt = frozenset(epsilon_closure(nfa, move(nfa, set(current), symbol)))
-            if not nxt:
-                continue
-            if nxt not in dfa_states:
-                name = f"D{counter}"
-                counter += 1
-                dfa_states[nxt] = name
-                dfa_transitions[name] = {}
-                trace.append((name, set(nxt)))
-                queue.append(nxt)
-            dfa_transitions[current_name][symbol] = dfa_states[nxt]
-
-    # Mark trap: any state that is not accepting has no outgoing on some symbol -> add D_trap.
-    dfa_transitions.setdefault("D_trap", {})
-
-    dfa_accepting = {
-        dfa_states[subset]
-        for subset in dfa_states
-        if subset & nfa.accepting_states
-    }
-
-    dfa = DFA(
-        states=list(dfa_states.values()) + ["D_trap"],
-        transitions=dfa_transitions,
-        start_state="D0",
-        accepting_states=dfa_accepting,
-        trap_state="D_trap",
-    )
-    return dfa, trace
-
-
-def _format_subset(states: set[str] | frozenset[str]) -> str:
-    """Format an NFA state subset as mathematical set notation {q0, q1} or ∅."""
-    if not states:
-        return "∅"
-    return "{" + ", ".join(sorted(states)) + "}"
-
-
-def simulate_nfa(input_string: str, nfa: NFA | None = None) -> SimulationResult:
-    """
-    Run `input_string` through the Canonical NFA tracking active subsets.
-
-    Rules:
-      - Empty input      -> REJECTED_EMPTY_INPUT, final_state=None
-      - Symbol outside Σ -> REJECTED_INVALID_SYMBOL, to_state="∅"
-      - No valid move    -> transition to ∅, REJECTED_NO_TRANSITION
-      - Ends in subset containing q13 -> ACCEPTED
-      - Ends elsewhere   -> REJECTED_NON_FINAL_STATE
-    """
-    nfa = nfa or canonical_nfa()
-    trace: list[TransitionStep] = []
-    total = len(input_string)
-
-    if total == 0:
-        return SimulationResult(
-            input_string="",
-            accepted=False,
-            status=SimulationStatus.REJECTED_EMPTY_INPUT,
-            final_state=None,
-            trace=[],
-            error_message="Input string cannot be empty.",
-            error_position=None,
-            processed_symbols=0,
-            total_symbols=0,
-            explanation="Please enter an Employee ID.",
-        )
-
-    current_subset = epsilon_closure(nfa, {nfa.start_state})
-    state_str = _format_subset(current_subset)
-
-    for idx, symbol in enumerate(input_string):
-        step_no = idx + 1
-
-        if not is_symbol_in_alphabet(symbol):
-            trace.append(
-                TransitionStep(
-                    step=step_no,
-                    symbol=symbol,
-                    from_state=state_str,
-                    to_state="∅",
-                    is_valid=False,
-                    explanation=f"Symbol {symbol!r} is outside the alphabet Sigma.",
-                )
-            )
-            return SimulationResult(
-                input_string=input_string,
-                accepted=False,
-                status=SimulationStatus.REJECTED_INVALID_SYMBOL,
-                final_state="∅",
-                trace=trace,
-                error_message=f"Invalid symbol {symbol!r} at position {idx}.",
-                error_position=idx,
-                processed_symbols=step_no,
-                total_symbols=total,
-                explanation=f"Rejected: {symbol!r} is not part of the Employee ID alphabet.",
-            )
-
-        # Valid symbol: compute move + epsilon closure
-        next_subset = epsilon_closure(nfa, move(nfa, current_subset, symbol))
-        to_state_str = _format_subset(next_subset)
-        is_valid = bool(next_subset)
-
-        if not is_valid:
-            trace.append(
-                TransitionStep(
-                    step=step_no,
-                    symbol=symbol,
-                    from_state=state_str,
-                    to_state="∅",
-                    is_valid=False,
-                    explanation=f"No valid NFA transition from {state_str} on {symbol!r}.",
-                )
-            )
-            return SimulationResult(
-                input_string=input_string,
-                accepted=False,
-                status=SimulationStatus.REJECTED_NO_TRANSITION,
-                final_state="∅",
-                trace=trace,
-                error_message=f"No valid transition from NFA subset {state_str} on {symbol!r} at position {idx}.",
-                error_position=idx,
-                processed_symbols=step_no,
-                total_symbols=total,
-                explanation=f"Rejected: no NFA transition on {symbol!r} at position {idx}.",
-            )
-
-        trace.append(
-            TransitionStep(
-                step=step_no,
-                symbol=symbol,
-                from_state=state_str,
-                to_state=to_state_str,
-                is_valid=True,
-                explanation=f"{state_str} --{symbol}--> {to_state_str}",
-            )
-        )
-        current_subset = next_subset
-        state_str = to_state_str
-
-    accepted = bool(current_subset & nfa.accepting_states)
-    if accepted:
-        status = SimulationStatus.ACCEPTED
-        explanation = "Input recognized as a valid Employee ID by Canonical NFA."
-    else:
-        status = SimulationStatus.REJECTED_NON_FINAL_STATE
-        explanation = (
-            f"Input ended in non-accepting NFA subset {state_str}; expected {sorted(nfa.accepting_states)}."
-        )
-
-    return SimulationResult(
-        input_string=input_string,
-        accepted=accepted,
-        status=status,
-        final_state=state_str,
-        trace=trace,
-        error_message=None if accepted else f"Non-accepting NFA subset {state_str}.",
-        error_position=None if accepted else total - 1,
-        processed_symbols=total,
-        total_symbols=total,
-        explanation=explanation,
-    )
+    states = sorted(names.values(), key=natural_key)
+    if dead_needed:
+        states.append(DEAD_NAME)
+        transitions[DEAD_NAME] = {a: DEAD_NAME for a in sigma}
+    steps.sort(key=lambda s: natural_key(s.name))
+    if dead_needed:  # the empty subset: every symbol leads back to itself
+        steps.append(SubsetStep(DEAD_NAME, frozenset(), False,
+                                (SubsetMove(tuple(sigma), frozenset(), frozenset(), DEAD_NAME),)))
+    accepting = {names[s] for s in names if s & nfa.accepting_states}
+    return DFA(states, sigma, transitions, "D0", accepting), steps

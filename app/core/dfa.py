@@ -1,88 +1,114 @@
 """
-DETERMINISTIC FINITE AUTOMATON (Minimized DFA)
-Owner: Ken (Backend / Automata Core Lead)
-Task: BE-003
+DETERMINISTIC FINITE AUTOMATON
 
-The DFA is the authoritative recognizer of the Employee ID language.
-
-M = (Q, Sigma, delta, q0, F)
-
-Where:
-  Q     = 15 states (q0..q13 + q_trap)
-  Sigma = 14 symbols
-  delta = canonical transition table (from app/data/id_rules.py)
-  q0    = 'q0'
-  F     = {'q13'}
-
-Layer 2 of the validation pipeline (deterministic simulation).
+M = (Q, Sigma, delta, q0, F)  with delta TOTAL: every (state, symbol) pair is defined
+explicitly (dead-state edges included), so there is no implicit "missing = trap" rule.
+The constructor validates the five-tuple. A DFA is never hand-typed for the simulator:
+it is produced by subset_construction() and minimize() (see app/core/pipeline.py).
 """
 
+import re
+from collections.abc import Iterable
 
-from app.data.id_rules import (
-    ACCEPTING_STATES,
-    CANONICAL_STATES,
-    CANONICAL_TRANSITIONS,
-    START_STATE,
-    TRAP_STATE,
-)
+
+def natural_key(name: str) -> tuple:
+    """Sort key so q2 < q10 and D2 < D10."""
+    return tuple(int(t) if t.isdigit() else t for t in re.split(r"(\d+)", name))
+
+
+def dist_to_accept(
+    states: Iterable[str], edges: Iterable[tuple[str, str, int]], accepting: Iterable[str]
+) -> dict[str, int]:
+    """Fewest symbols needed to reach an accepting state (edge cost 0 = epsilon, 1 = symbol)."""
+    accepting = set(accepting)
+    dist = {s: (0 if s in accepting else None) for s in states}
+    edges = list(edges)
+    changed = True
+    while changed:
+        changed = False
+        for u, v, cost in edges:
+            if dist[v] is not None and (dist[u] is None or dist[v] + cost < dist[u]):
+                dist[u] = dist[v] + cost
+                changed = True
+    return {s: d for s, d in dist.items() if d is not None}
 
 
 class DFA:
-    """
-    Deterministic Finite Automaton.
-
-    If no valid transition exists for a given (state, symbol) pair,
-    the automaton moves to q_trap. From q_trap, every symbol loops
-    back to q_trap.
-    """
-
     def __init__(
         self,
-        states: list[str] | None = None,
-        transitions: dict[str, dict[str, str]] | None = None,
-        start_state: str = START_STATE,
-        accepting_states: set | None = None,
-        trap_state: str = TRAP_STATE,
+        states: list[str],
+        alphabet: Iterable[str],
+        transitions: dict[str, dict[str, str]],
+        start_state: str,
+        accepting_states: Iterable[str],
     ) -> None:
-        self.states: list[str] = states if states is not None else list(CANONICAL_STATES)
-        self.transitions: dict[str, dict[str, str]] = (
-            transitions if transitions is not None else CANONICAL_TRANSITIONS
+        self.states: list[str] = list(states)
+        self.alphabet: frozenset[str] = frozenset(alphabet)
+        self.transitions: dict[str, dict[str, str]] = {
+            s: dict(transitions.get(s, {})) for s in self.states
+        }
+        self.start_state = start_state
+        self.accepting_states: frozenset[str] = frozenset(accepting_states)
+        self._validate()
+        self._dist = dist_to_accept(
+            self.states,
+            ((u, v, 1) for u, row in self.transitions.items() for v in row.values()),
+            self.accepting_states,
         )
-        self.start_state: str = start_state
-        self.accepting_states: set = (
-            set(accepting_states) if accepting_states is not None else set(ACCEPTING_STATES)
-        )
-        self.trap_state: str = trap_state
+        # Dead (trap) states: no accepting state is reachable from them.
+        self.dead_states: frozenset[str] = frozenset(s for s in self.states if s not in self._dist)
+
+    def _validate(self) -> None:
+        known = set(self.states)
+        if len(known) != len(self.states):
+            raise ValueError("duplicate state names")
+        if self.start_state not in known:
+            raise ValueError(f"start state {self.start_state!r} not in Q")
+        if not self.accepting_states <= known:
+            raise ValueError(f"accepting states not in Q: {sorted(self.accepting_states - known)}")
+        for s, row in self.transitions.items():
+            for a, t in row.items():
+                if a not in self.alphabet or t not in known:
+                    raise ValueError(f"bad transition delta({s!r}, {a!r}) = {t!r}")
+            missing = self.alphabet - row.keys()
+            if missing:
+                raise ValueError(f"delta not total: {s!r} lacks {sorted(missing)}")
 
     # --- Core API -----------------------------------------------------------
 
     def step(self, state: str, symbol: str) -> str:
-        """
-        Return delta(state, symbol).
-
-        If no explicit transition exists, return q_trap.
-        Once in q_trap, every symbol returns q_trap.
-        """
-        if state == self.trap_state:
-            return self.trap_state
-        row = self.transitions.get(state, {})
-        return row.get(symbol, self.trap_state)
+        """delta(state, symbol). Symbols outside Sigma are not in delta's domain."""
+        if symbol not in self.alphabet:
+            raise ValueError(f"symbol {symbol!r} is not in Sigma")
+        return self.transitions[state][symbol]
 
     def is_accepting(self, state: str) -> bool:
         return state in self.accepting_states
 
-    def run(self, input_string: str) -> str:
-        """Return the final state after consuming every symbol."""
+    def is_dead(self, state: str) -> bool:
+        return state in self.dead_states
+
+    def run(self, word: str) -> str:
         state = self.start_state
-        for symbol in input_string:
+        for symbol in word:
             state = self.step(state, symbol)
         return state
 
-    def accepts(self, input_string: str) -> bool:
-        return self.is_accepting(self.run(input_string))
+    def accepts(self, word: str) -> bool:
+        """w in L(M). A word containing a symbol outside Sigma is not a word over Sigma."""
+        if not set(word) <= self.alphabet:
+            return False
+        return self.is_accepting(self.run(word))
 
     # --- Inspection ---------------------------------------------------------
 
+    def expected(self, state: str) -> list[str]:
+        """Symbols that keep the run alive (lead to a non-dead state)."""
+        return sorted(a for a, t in self.transitions[state].items() if t not in self.dead_states)
+
+    def symbols_needed(self, state: str) -> int | None:
+        """Fewest more symbols needed to accept from `state` (None if dead)."""
+        return self._dist.get(state)
+
     def transition_table(self) -> dict[str, dict[str, str]]:
-        """Return the full delta as a nested dict for display."""
-        return {state: dict(self.transitions.get(state, {})) for state in self.states}
+        return {s: dict(self.transitions[s]) for s in self.states}
