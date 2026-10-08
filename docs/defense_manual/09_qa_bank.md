@@ -86,6 +86,18 @@ This Q&A bank contains detailed answers to likely defense questions, organized i
 - **Who Should Answer:** Chester Lauzon
 - **Key Terms:** Atomic fragments, concatenation, inductive construction.
 
+### Q11B: What is a "Thompson atom", and is the character-class atom really necessary?
+- **Short Answer:** An atom is the irreducible 2-state building block in Thompson's construction. Consolidating the 10 digits into an atomic 2-state block with 10 parallel edges is practically essential—without it, naive textbook unions would blow up the NFA by over 170 extra states to nearly 200 states.
+- **Expanded Explanation:** In textbook theory, `[0-9]` requires 9 branching unions, with each union introducing start/end states and 4 $\varepsilon$-transitions. Across 8 digit positions, this causes state explosion. Our character-class atom accepts the exact same language while keeping the NFA at a clean, human-traceable 26 states.
+- **Who Should Answer:** Chester Lauzon
+- **Key Terms:** Character-class atom, state explosion, textbook union vs parallel edges.
+
+### Q11C: Does the NFA have more or fewer steps than the DFA?
+- **Short Answer:** The NFA has more states (26 vs 15) and takes more execution steps (25 transitions vs 13 transitions for a valid ID).
+- **Expanded Explanation:** For a valid ID like `EMP-2026-0042`, the DFA takes exactly 13 transitions (one per character). The $\varepsilon$-NFA must traverse all 13 character edges PLUS 12 free $\varepsilon$-transitions connecting the fragments ($13 + 12 = 25$ steps). The DFA is therefore strictly simpler and faster to execute.
+- **Who Should Answer:** Chester Lauzon
+- **Key Terms:** State count vs execution steps, $\varepsilon$-transitions, linear single-pass execution.
+
 ---
 
 ## Category E — DFA Questions
@@ -113,6 +125,12 @@ This Q&A bank contains detailed answers to likely defense questions, organized i
 - **Expanded Explanation:** In textbook DFA definitions, $\delta$ must be total. Without a trap state, missing transitions would require an implicit "crash" condition. With $q_{\text{trap}}$, all 15 states have 14 explicit transitions ($15 \times 14 = 210$ entries). Furthermore, $q_{\text{trap}}$ allows the GUI to visually pinpoint syntax errors with a red edge.
 - **Who Should Answer:** Chester Lauzon
 - **Key Terms:** Total transition function, dead state, complete transition table.
+
+### Q15B: What does it mean that the Minimal DFA is "authoritative"?
+- **Short Answer:** It means the Minimal DFA is the single source of truth that actually executes and decides acceptance in our runtime validator (`app.core.simulator.Run`).
+- **Expanded Explanation:** While the regex, $\varepsilon$-NFA, and subset DFA are generated during compilation, the Minimal DFA is mathematically canonical (unique under Myhill–Nerode) and free of redundancy. It is the official machine that powers both the batch validator and the interactive simulator.
+- **Who Should Answer:** Chester Lauzon / Ken Talingting
+- **Key Terms:** Authoritative model, canonical representation, single source of truth.
 
 ---
 

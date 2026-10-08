@@ -30,6 +30,9 @@ Every number below was checked against the code on 2026-10-08.
 ## Must-understand concepts
 
 - **Finite ⇒ regular.** Any finite set of strings is a union of single strings, and regular languages are closed under union. (Regular does NOT imply finite.)
+- **Thompson atom & character-class atom:** An atom is the basic 2-state unit in Thompson's construction ($s_{\text{in}} \xrightarrow{a} s_{\text{out}}$). Collapsing `[0-9]` into an atomic 2-state unit with 10 parallel transitions avoids 170+ extra states, keeping the NFA at a clean 26 states instead of ~190 states.
+- **Minimal DFA is authoritative:** It is the single source of truth that makes actual runtime acceptance decisions in `Run`. NFA and subset DFA are kept only for educational visualization.
+- **NFA vs DFA steps:** The NFA has **more states** (26 vs 15) and takes **more execution steps** for a valid ID (25 steps: 13 characters + 12 $\varepsilon$-jumps). The DFA takes only 13 steps (1 per character) with zero $\varepsilon$-jumps and zero backtracking.
 - **ε-transition:** a move that reads no symbol. Thompson uses them to glue fragments together.
 - **ε-closure(S):** every state reachable from S by ε-moves alone.
 - **move(S, a):** every state reachable from S by reading `a` once.

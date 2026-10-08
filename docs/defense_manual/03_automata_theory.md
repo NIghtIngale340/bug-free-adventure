@@ -31,9 +31,42 @@ Moore Partition Refinement (Minimal DFA: 15 states)
 
 Every single state machine in this project is **derived algorithmically** from the regular expression. No transition table was hand-coded for the execution engine.
 
+## 2. Beginner FAQ: Three Core Concepts to Understand First
+
+Before diving into the algorithmic pipeline, here are three essential concepts that team members and panel professors often ask about, explained in plain language:
+
+### Concept 1: What is a "Thompson atom"? Is it really necessary for NFA or DFA?
+- **In plain English:** In Thompson's Construction, an **"atom"** is the smallest building block of a regex. For a single letter like `'E'`, Thompson builds a 2-state mini-machine: $s_{\text{in}} \xrightarrow{\text{'E'}} s_{\text{out}}$.
+- **The Problem:** In pure textbook theory, matching a digit `[0-9]` means writing out 9 separate unions: $(0 \cup 1 \cup 2 \cup \dots \cup 9)$. Under textbook rules, every union splits with $\varepsilon$-transitions, creating **22 states and 20 $\varepsilon$-transitions for just one single digit!** Across all 8 digits in an Employee ID, a naive textbook NFA would balloon by over 170 extra states to nearly **200 states**, looking like an unreadable spiderweb.
+- **Our Solution (Character-Class Atom):** We consolidated the digit class $D = (0 \cup \dots \cup 9)$ into an atomic 2-state block with 10 parallel transitions directly between them: $s_{\text{in}} \xrightarrow{0..9} s_{\text{out}}$.
+- **Is it really necessary?**
+  - *Mathematically:* Both accept the exact same language.
+  - *Practically:* **Yes, absolutely!** It keeps our NFA at a clean, human-traceable **26 states** instead of ~190 states. Without this optimization, the NFA diagram would be impossible to display on screen or understand in the GUI.
+
+### Concept 2: What does "Minimal DFA is Authoritative" mean?
+- **In plain English:** "Authoritative" means **the single source of truth / the definitive model**.
+- In this project, we generate several models: Regex AST, Thompson $\varepsilon$-NFA (26 states), Subset DFA (15 states), and the **Minimal DFA** ($q_0 \dots q_{13}, q_{\text{trap}}$).
+- We call the Minimal DFA **authoritative** because:
+  1. **It makes the real decisions:** The validation engine (`app.core.simulator.Run`) executes the Minimal DFA when determining whether an ID is `ACCEPTED` or `REJECTED`. The NFA and subset DFA exist strictly for educational inspection on the Theory page.
+  2. **It is mathematically canonical:** By the Myhill–Nerode theorem, there is only **one unique minimal DFA** for a regular language. It has no redundant states, no $\varepsilon$-ambiguity, and represents the optimal recognizer.
+
+### Concept 3: Does the NFA have more or fewer steps than the DFA?
+This depends on whether you mean **states in the machine** or **steps taken while running an input**:
+
+1. **Number of States in the Machine (Size):**
+   - The **$\varepsilon$-NFA has MORE states (26 states)**: each of the 13 atomic characters has its own 2-state block ($13 \times 2 = 26$).
+   - The **DFA has FEWER states (15 states)**: 14 live states ($q_0 \dots q_{13}$) + 1 trap state ($q_{\text{trap}}$).
+2. **Number of Steps to Process a Valid ID (Execution Path):**
+   - For a valid 13-character ID like `EMP-2026-0042`:
+     - The **DFA takes FEWER steps (13 steps)**: It takes exactly 1 transition per character:
+       $$q_0 \xrightarrow{E} q_1 \xrightarrow{M} q_2 \dots \xrightarrow{2} q_{13} \quad (13 \text{ transitions})$$
+     - The **$\varepsilon$-NFA takes MORE steps (25 steps)**: It must traverse 13 character arrows **plus 12 free $\varepsilon$-transitions** connecting the fragments:
+       $$n_0 \xrightarrow{E} n_1 \xrightarrow{\varepsilon} n_2 \xrightarrow{M} n_3 \xrightarrow{\varepsilon} n_4 \dots \xrightarrow{2} n_{25} \quad (13 + 12 = 25 \text{ transitions})$$
+- **Summary:** The DFA is simpler and faster to execute: fewer states (15 vs 26) and fewer steps (13 vs 25), with zero $\varepsilon$-jumps and zero backtracking.
+
 ---
 
-## 2. Component A — Regular Expression & Regex AST
+## 3. Component A — Regular Expression & Regex AST
 
 ### Beginner Explanation
 A **regular expression (regex)** is a compact formula that describes a pattern of text. Think of it like a stencil: anything that matches the stencil passes through.
@@ -77,7 +110,7 @@ Literal Literal        D
 
 ---
 
-## 3. Component B — Thompson's Construction (ε-NFA)
+## 4. Component B — Thompson's Construction (ε-NFA)
 
 ### Beginner Explanation
 An **Nondeterministic Finite Automaton (NFA)** is a state machine where:
@@ -141,7 +174,7 @@ $$M_{\text{NFA}} = (Q_{\text{NFA}}, \Sigma, \delta_{\text{NFA}}, n_0, F_{\text{N
 
 ---
 
-## 4. Component C — Rabin–Scott Subset Construction (NFA → DFA)
+## 5. Component C — Rabin–Scott Subset Construction (NFA → DFA)
 
 ### Beginner Explanation
 Computers do not like "guessing" which path to take or tracking multiple possibilities at once. An NFA can be in multiple states simultaneously, but a **Deterministic Finite Automaton (DFA)** is always in **exactly one state**.
@@ -196,7 +229,7 @@ This ensures the DFA never crashes, has a complete mathematical definition ($15 
 
 ---
 
-## 5. Component D — DFA Minimization (Moore's Algorithm)
+## 6. Component D — DFA Minimization (Moore's Algorithm)
 
 ### Beginner Explanation
 When you build a DFA from an NFA, you might end up with extra states that do the exact same thing (redundant states). **Minimization** is like simplifying a fraction (reducing $4/8$ to $1/2$): it finds states that behave identically and merges them together into a single state.
@@ -238,7 +271,7 @@ $$D_0 \to q_0, \quad D_1 \to q_1, \quad \dots, \quad D_{13} \to q_{13}, \quad D_
 
 ---
 
-## 6. The "Shortest Accepting Distance" Proof (No-Merge Proof)
+## 7. The "Shortest Accepting Distance" Proof (No-Merge Proof)
 
 This is one of the most elegant mathematical proofs in our project. If the panel asks: *"How do you prove mathematically that these 15 states cannot be reduced?"*, Chester Lauzon can present this explanation:
 
@@ -280,7 +313,7 @@ Define $d(q, F)$ as the length of the shortest string $w \in \Sigma^*$ that tran
 
 ---
 
-## 7. Summary of Model Differences
+## 8. Summary of Model Differences
 
 | Feature | ε-NFA (`n0`–`n25`) | Subset DFA (`D0`–`D13`, `D_trap`) | Minimal DFA (`q0`–`q13`, `q_trap`) |
 |---|---|---|---|
